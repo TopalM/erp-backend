@@ -1,0 +1,56 @@
+model User {
+  id                          String @id @default(cuid()) // Kullanıcı benzersiz id'si
+
+  firstName                   String // Kullanıcının adı
+  lastName                    String // Kullanıcının soyadı
+
+  email                       String @unique // Kullanıcının giriş yaptığı benzersiz e-posta adresi
+  passwordHash                String // Hashlenmiş kullanıcı parolası
+
+  isActive                    Boolean @default(true) // Kullanıcı hesabı aktif mi?
+  tokenVersion                Int @default(0) // JWT tokenlarını geçersiz kılmak için kullanılan versiyon numarası
+  failedLoginAttempts         Int @default(0) // Başarısız giriş deneme sayısı
+  lockedUntil                 DateTime? // Hesap kilitliyse kilidin sona ereceği tarih
+  lastLoginAt                 DateTime? // Son başarılı giriş tarihi
+
+  departmentId        String? // Kullanıcının bağlı olduğu departman id'si
+  department          Department? @relation(fields: [departmentId], references: [id]) // Kullanıcının bağlı olduğu departman
+
+  roleId                      String // Kullanıcının rol id'si
+  role                        Role @relation(fields: [roleId], references: [id]) // Kullanıcının rolü
+
+  userPermissions             UserPermission[] // Kullanıcıya özel atanmış ek yetkiler
+
+  createdSuppliers    Supplier[] @relation("SupplierCreatedBy") // Kullanıcının oluşturduğu tedarikçi kayıtları
+  updatedSuppliers    Supplier[] @relation("SupplierUpdatedBy") // Kullanıcının güncellediği tedarikçi kayıtları
+  deletedSuppliers    Supplier[] @relation("SupplierDeletedBy") // Kullanıcının sildiği/pasife aldığı tedarikçi kayıtları
+
+  supplierEvaluations         SupplierEvaluation[] // Kullanıcının yaptığı tedarikçi değerlendirme kayıtları
+
+  documentsUploaded Document[] @relation("UserUploadedDocuments") // Kullanıcının merkezi doküman sistemine yüklediği dosyalar
+
+  approvalsRequested          Approval[] @relation("ApprovalRequestedBy") // Kullanıcının onaya gönderdiği kayıtlar
+  approvalsToDecide           Approval[] @relation("ApprovalApprover") // Kullanıcının onaylayacağı / reddedeceği kayıtlar
+
+  assignments                 Assignment[] @relation("AssignmentUser") // Kullanıcının sorumlu / ilgili olduğu kayıtlar
+  assignmentsCreated          Assignment[] @relation("AssignmentCreatedBy") // Kullanıcının oluşturduğu sorumluluk atamaları
+
+  authEventLogs               AuthEventLog[] // Kullanıcının giriş, çıkış, şifre değişikliği vb. güvenlik kayıtları
+
+  passwordResetToken          String? @unique // Şifre sıfırlama işlemi için oluşturulan benzersiz token
+  passwordResetExpires        DateTime? // Şifre sıfırlama tokenının geçerlilik süresi
+
+  phone                       String? // Kullanıcının telefon numarası
+  profilePhotoUrl             String? // Profil fotoğrafının storage path bilgisi
+
+  preferredTheme              String? @default("light") // Kullanıcının tercih ettiği tema (light, dark vb.)
+
+  emailVerifiedAt             DateTime? // E-posta adresinin doğrulandığı tarih
+  emailVerificationToken      String? @unique // E-posta doğrulama tokenı
+  emailVerificationExpires    DateTime? // E-posta doğrulama tokenının geçerlilik süresi
+
+  employee                    Employee? // Kullanıcıya bağlı çalışan kaydı
+
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}

@@ -1,0 +1,11 @@
+model ProductionYear {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+  year     Int @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

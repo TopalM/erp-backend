@@ -1,0 +1,15 @@
+export const inputControlAppearance = [
+  { id: 1, value: "Toz" },
+  { id: 2, value: "Kristal" },
+  { id: 3, value: "Berrak" },
+  { id: 4, value: "Beyaz Pul" },
+  { id: 5, value: "Payet" },
+  { id: 6, value: "Beyaz Toz" },
+  { id: 7, value: "Beyaz Flake" },
+  { id: 8, value: "Berrak Sıvı" },
+  { id: 9, value: "Beyaz Renksiz Sıvı" },
+  { id: 10, value: "Hafif Sarımstrak Sıvı" },
+  { id: 11, value: "Sarı/Kahverengi Sıvı" },
+  { id: 12, value: "Beyaz Küçük Kristal" },
+  { id: 13, value: "Siyah Toz" },
+];

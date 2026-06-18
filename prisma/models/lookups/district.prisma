@@ -1,0 +1,15 @@
+model District {
+  id          Int @id // İlçe id'si
+
+  cityId      Int // Bağlı olduğu şehir id'si
+
+  value       String // İlçe adı
+
+  city        City @relation(fields: [cityId], references: [id], onDelete: Restrict) // Bağlı olduğu şehir
+
+  employees   Employee[] // Bu ilçede kayıtlı çalışanlar
+
+  @@index([cityId])
+
+  @@map("districts")
+}

@@ -1,0 +1,264 @@
+enum ProductionJobType {
+  PRODUCTION                    // Üretim işi
+  BREAKDOWN                     // Bekleme / duruş / arıza kaydı
+}
+
+enum ProductionStatus {
+  PLANNED                       // Planlandı
+  COMPLETED                     // Tamamlandı
+  CANCELLED                     // İptal edildi
+  WAITING                       // Beklemede
+}
+
+enum ProductionDelayReason {
+  BREAKDOWN_INTERVENTION        // Arıza / müdahale
+  MAINTENANCE                   // Bakım
+  OPERATIONAL_WAITING           // Operasyonel bekleme
+  RAW_MATERIAL_WAITING          // Hammadde bekleme
+  ANALYSIS_WAITING              // Analiz bekleme
+  CLEANING                      // Temizlik
+  OTHER                         // Diğer
+}
+
+model ProductionReactor {
+  id                    String @id @default(cuid()) // Reaktör benzersiz id'si
+
+  code                  String @unique // Reaktör kodu: R1, R2 vb.
+  name                  String         // Reaktör adı
+
+  sortOrder             Int     @default(0) // Ekranda ve planlamada sıralama
+  isActive              Boolean @default(true) // Reaktör aktif mi?
+
+  jobs                  ProductionJob[] // Reaktöre bağlı üretim ve duruş kayıtları
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model ProductionPeriodSetting {
+  id                    String @id @default(cuid()) // Dönem ayarı benzersiz id'si
+
+  year                  Int // ISO yıl
+  week                  Int // ISO hafta
+
+  reactorLoadOrder      Json? // Maksimum üretim için reaktör yükleme sırası
+  maxProductionStart    DateTime? // Maksimum üretim başlangıç tarihi
+  maxProductionEnd      DateTime? // Maksimum üretim bitiş tarihi
+
+  createdAt             DateTime @default(now()) // Oluşturulma tarihi
+  updatedAt             DateTime @updatedAt // Güncellenme tarihi
+
+  @@unique([year, week]) 
+  @@index([year, week])
+}
+
+model ProductionRawMaterialOrigin {
+  id                    String @id @default(cuid()) // Hammadde menşei benzersiz id'si
+
+  rawMaterialKey        String // Hammadde anahtarı: twoEH, pta, aa vb.
+  rawMaterialName       String // Hammadde görünen adı
+  brandName             String // Marka / menşei adı
+  isActive              Boolean @default(true) // Aktif mi?
+
+  createdAt             DateTime @default(now()) // Oluşturulma tarihi
+  updatedAt             DateTime @updatedAt // Güncellenme tarihi
+
+  @@unique([rawMaterialKey, brandName])
+  @@index([rawMaterialKey])
+}
+
+model ProductionJob {
+  id                    String @id @default(cuid()) // Üretim işi benzersiz id'si
+
+  type                  ProductionJobType // Üretim mi, duruş/bekleme kaydı mı?
+  status                ProductionStatus // Planlandı, tamamlandı, iptal edildi vb.
+
+  year                  Int // ISO yıl
+  week                  Int // ISO hafta
+
+  reactorId             String // Reaktör id'si
+  reactor               ProductionReactor @relation(fields: [reactorId], references: [id]) // Bağlı reaktör
+
+  batchNo               String? // Batch numarası
+
+  productId             String? // Ürün id'si
+  product               Product? @relation("ProductionJobProduct", fields: [productId], references: [id]) // Ürün ilişkisi
+
+  productCode           String? // Ürün kodu snapshot
+  productName           String? // Ürün adı snapshot
+
+  plannedStart          DateTime // Planlanan başlangıç
+  plannedEnd            DateTime // Planlanan bitiş
+  plannedDurationMinute Int // Planlanan süre dakika
+
+  plannedQuantity       Decimal? @db.Decimal(14, 3) // Planlanan üretim miktarı
+  plannedTwoEH          Decimal? @db.Decimal(14, 3) // Planlanan 2-EH miktarı
+  plannedPTA            Decimal? @db.Decimal(14, 3) // Planlanan PTA miktarı
+
+  formen                String? // Formen
+  actualStart           DateTime? // Gerçek başlangıç
+  actualEnd             DateTime? // Gerçek bitiş
+  actualDurationMinute  Int? // Gerçek süre dakika
+  actualQuantity        Decimal? @db.Decimal(14, 3) // Gerçek üretim miktarı
+
+  description           String? // Açıklama
+
+  delayReason           ProductionDelayReason? // Duruş / bekleme nedeni
+
+  rekuper               Decimal? @db.Decimal(14, 3) // Reküper miktarı
+
+  twoEthylAlcohol       Decimal? @db.Decimal(14, 3) // 2-EH tüketimi
+  totalTwoEthylAlcohol  Decimal? @db.Decimal(14, 3) // Toplam tüketilen 2-EH
+  twoEthylAlcoholLotNo  String? // 2-EH lot no
+
+  pta                   Decimal? @db.Decimal(14, 3) // PTA tüketimi
+  ptaLotNo              String? // PTA lot no
+
+  aa                    Decimal? @db.Decimal(14, 3) // AA tüketimi
+  aaLotNo               String? // AA lot no
+
+  tma                   Decimal? @db.Decimal(14, 3) // TMA tüketimi
+  tmaLotNo              String? // TMA lot no
+
+  catalyst              Decimal? @db.Decimal(14, 3) // Katalizör tüketimi
+  catalystLotNo         String? // Katalizör lot no
+
+  causticSoda           Decimal? @db.Decimal(14, 3) // Kostik tüketimi
+
+  reactionStartTime               String? // Reaksiyon başlangıç saati
+  reactionStartTemperature        Decimal? @db.Decimal(10, 3) // Reaksiyon başlangıç sıcaklığı
+  reactionStartCatalystAmount     Decimal? @db.Decimal(14, 3) // İlk katalizör miktarı
+
+  catalyst2Time                   String? // 2. katalizör ekleme saati
+  catalyst2Temperature            Decimal? @db.Decimal(10, 3) // 2. katalizör sıcaklığı
+  catalyst2Amount                 Decimal? @db.Decimal(14, 3) // 2. katalizör miktarı
+
+  catalyst3Time                   String? // 3. katalizör ekleme saati
+  catalyst3Temperature            Decimal? @db.Decimal(10, 3) // 3. katalizör sıcaklığı
+  catalyst3Amount                 Decimal? @db.Decimal(14, 3) // 3. katalizör miktarı
+
+  washingTime                     String? // Yıkama saati
+  washingTemperature              Decimal? @db.Decimal(10, 3) // Yıkama sıcaklığı
+
+  strippingStartTime              String? // Stripping başlangıç saati
+  strippingStartTemperature       Decimal? @db.Decimal(10, 3) // Stripping başlangıç sıcaklığı
+
+  flashPointTime                  String? // Parlama noktası ölçüm saati
+  flashPointTemperature           Decimal? @db.Decimal(10, 3) // Parlama noktası sıcaklığı
+  flashPointValue                 Decimal? @db.Decimal(10, 3) // Parlama noktası değeri
+
+  hasFinalWashing                 Boolean @default(false) // Son yıkama yapıldı mı?
+
+  finalFlashPointTime             String? // Son parlama noktası ölçüm saati
+  finalFlashPointTemperature      Decimal? @db.Decimal(10, 3) // Son parlama noktası sıcaklığı
+  finalFlashPointValue            Decimal? @db.Decimal(10, 3) // Son parlama noktası değeri
+
+  dryingStartTime                 String? // Kurutma başlangıç saati
+  dryingEndTime                   String? // Kurutma bitiş saati
+
+  extraAlcohol1                   Decimal? @db.Decimal(14, 3) // İlave alkol 1
+  extraAlcohol2                   Decimal? @db.Decimal(14, 3) // İlave alkol 2
+  extraAlcohol3                   Decimal? @db.Decimal(14, 3) // İlave alkol 3
+
+  rekuperLitre Decimal? @db.Decimal(14, 3) // Çıkan reküper litre
+  dropTank                        String? // Drop tank
+  stockTank                       String? // Stok tank
+
+  productionBreakdownMinute       Int? // Üretim esnası arıza/duruş süresi
+  productionBreakdownDescription  String? // Üretim esnası arıza/duruş açıklaması
+
+  isDeleted                       Boolean @default(false) // Soft delete durumu
+
+  createdById                     String? // Oluşturan kullanıcı id
+  updatedById                     String? // Güncelleyen kullanıcı id
+
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  reactionRows                    ProductionReactionRow[] // Reaksiyon takip satırları
+  inputs                          ProductionInput[] // Üretim girdileri
+  outputs                         ProductionOutput[] // Üretim çıktıları
+
+  @@index([year, week])
+  @@index([reactorId])
+  @@index([status])
+  @@index([type])
+  @@index([productId])
+  @@index([isDeleted])
+  @@index([plannedStart, plannedEnd])
+}
+
+model ProductionReactionRow {
+  id                              String @id @default(cuid()) // Reaksiyon satırı benzersiz id'si
+
+  productionJobId       String // Üretim işi id'si
+  productionJob         ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
+
+  rowOrder              Int // Satır sırası
+
+  time                  String? // Ölçüm saati
+  temperature           Decimal? @db.Decimal(10, 3) // Sıcaklık
+  acidIndex             Decimal? @db.Decimal(10, 3) // Asit indisi
+  consumption           Decimal? @db.Decimal(10, 3) // Tüketim
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([productionJobId])
+}
+
+model ProductionInput {
+  id                    String @id @default(cuid()) // Üretim girdi kaydı id'si
+
+  productionJobId   String // Üretim işi id'si
+  productionJob     ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
+
+  productId         String? // Hammadde / ürün id'si
+  product           Product? @relation("ProductionInputProduct", fields: [productId], references: [id]) // Hammadde / ürün ilişkisi
+
+  rawMaterialReceiptItemId      String? // Hammadde kabul kalemi id'si
+  rawMaterialReceiptItem   RawMaterialReceiptItem? @relation(fields: [rawMaterialReceiptItemId], references: [id]) // Kabul kalemi ilişkisi
+
+  rawMaterialName         String? // Hammadde adı snapshot
+
+  lotNo                   String? // Lot numarası
+
+  quantity                Decimal @db.Decimal(14, 3) // Tüketilen miktar
+  unitName                String? // Birim adı snapshot
+
+  originId                String? // Menşei id
+  originName              String? // Menşei adı snapshot
+
+  createdAt               DateTime @default(now()) // Oluşturulma tarihi
+  updatedAt               DateTime @updatedAt // Güncellenme tarihi
+
+  @@index([productionJobId])
+  @@index([productId])
+  @@index([rawMaterialReceiptItemId])
+  @@index([rawMaterialName])
+  @@index([lotNo])
+}
+
+model ProductionOutput {
+  id                  String @id @default(cuid()) // Üretim çıktı kaydı id'si
+
+  productionJobId     String // Üretim işi id'si
+  productionJob       ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
+
+  productId           String? // Üretilen ürün id'si
+  product             Product? @relation("ProductionOutputProduct", fields: [productId], references: [id]) // Ürün ilişkisi
+
+  lotNo               String? // Ürün lot numarası
+
+  quantity            Decimal @db.Decimal(14, 3) // Üretilen miktar
+  unitName            String? // Birim adı snapshot
+
+  tankNo              String? // Stok tankı
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([productionJobId])
+  @@index([productId])
+  @@index([lotNo])
+}

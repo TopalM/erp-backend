@@ -1,0 +1,75 @@
+enum EmployeeStatus {
+  ACTIVE      // Aktif çalışan
+  PASSIVE     // Pasif çalışan
+  RESIGNED    // İstifa ederek ayrılmış çalışan
+  TERMINATED  // İşveren tarafından iş akdi sonlandırılmış çalışan
+}
+
+enum EmployeeType {
+  BLUE_COLLAR   // Mavi yaka çalışan
+  WHITE_COLLAR  // Beyaz yaka / ofis çalışanı
+}
+
+model Employee {
+  id                String @id @default(cuid()) // Çalışan benzersiz id'si
+
+  employeeCode      String @unique // Sicil / çalışan kodu
+  firstName         String // Çalışanın adı
+  lastName          String // Çalışanın soyadı
+
+  type              EmployeeType   @default(BLUE_COLLAR) // Çalışan tipi
+  status            EmployeeStatus @default(ACTIVE) // Çalışan durumu
+
+  phone             String? // Telefon numarası
+  email             String? // İş veya kişisel e-posta adresi
+
+  identityNumber    String? @unique // TC kimlik numarası
+  birthDate         DateTime? // Doğum tarihi
+
+  hireDate          DateTime? // İşe giriş tarihi
+  leaveDate         DateTime? // İşten çıkış tarihi
+
+  title             String? // Ünvan / görev
+
+  departmentId      String? // Departman id'si
+  department        Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull) // Bağlı olduğu departman
+
+  userId            String? @unique // Bağlı kullanıcı hesabı id'si
+  user              User? @relation(fields: [userId], references: [id], onDelete: SetNull) // Bağlı kullanıcı hesabı
+
+  bloodTypeId       String? // Kan grubu id'si
+  bloodType         BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull) // Kan grubu
+
+  locationId        String? // Lokasyon id'si
+  location          Location? @relation(fields: [locationId], references: [id], onDelete: SetNull) // Lokasyon
+
+  cityId            Int? // Şehir id'si
+  city              City? @relation(fields: [cityId], references: [id], onDelete: SetNull) // Şehir
+
+  districtId        Int? // İlçe id'si
+  district          District? @relation(fields: [districtId], references: [id], onDelete: SetNull) // İlçe
+
+  address           String? // Açık adres
+
+  monthlySalary     Decimal? @db.Decimal(12, 2) // Bakım/personel maliyet hesabında kullanılacak aylık maaş
+  salaryCurrency    String?  @default("TRY") // Maaş para birimi
+
+  note              String? // Açıklama / not
+
+  maintenanceWorks MaintenanceWorker[]
+
+  createdAt         DateTime @default(now()) // Oluşturulma tarihi
+  updatedAt         DateTime @updatedAt // Son güncellenme tarihi
+
+  @@index([employeeCode])
+  @@index([firstName])
+  @@index([lastName])
+  @@index([status])
+  @@index([type])
+  @@index([departmentId])
+  @@index([userId])
+  @@index([bloodTypeId])
+  @@index([locationId])
+  @@index([cityId])
+  @@index([districtId])
+}

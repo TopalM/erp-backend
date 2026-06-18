@@ -1,0 +1,68 @@
+
+enum RawMaterialReceiptStatus {
+  DRAFT
+  RECEIVED
+  QC_PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model RawMaterialReceipt {
+  id String @id @default(cuid())
+
+  supplierId      String
+  purchaseOrderId String?
+
+  receiptNo String @unique
+
+  receiptDate DateTime @db.Date
+
+  supplierBatchNo String?
+  documentNo      String?
+
+  status RawMaterialReceiptStatus @default(RECEIVED)
+
+  note String?
+
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  items RawMaterialReceiptItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([supplierId])
+  @@index([purchaseOrderId])
+  @@index([receiptDate])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model RawMaterialReceiptItem {
+  id String @id @default(cuid())
+
+  receiptId String
+  productId String?
+
+  rawMaterialName String
+
+  quantity Decimal @db.Decimal(18, 4)
+  unit     String  @default("ton")
+
+  lotNo String?
+
+  receipt RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product?           @relation(fields: [productId], references: [id])
+
+  productionInputs ProductionInput[]
+
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+  @@index([productId])
+  @@index([rawMaterialName])
+  @@index([lotNo])
+}

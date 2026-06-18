@@ -1,0 +1,18 @@
+model Location {
+  id          String @id @default(cuid())
+
+  legacyId    Int? @unique
+
+  name        String @unique
+
+  isActive    Boolean @default(true)
+
+  employees   Employee[]
+
+  equipments  Equipment[]
+
+  maintenances Maintenance[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

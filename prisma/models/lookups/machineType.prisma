@@ -1,0 +1,13 @@
+model MachineType {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+
+  name     String @unique
+  isActive Boolean @default(true)
+
+  equipments Equipment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

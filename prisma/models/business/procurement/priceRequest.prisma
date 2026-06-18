@@ -1,0 +1,186 @@
+enum PriceRequestChannel {
+  MAIL
+  WHATSAPP
+}
+
+enum PriceRequestSupplierStatus {
+  DRAFT
+  READY
+  SENT
+  FAILED
+  RESPONDED
+  EXPIRED
+}
+
+enum PriceRecordSource {
+  MANUAL
+  WHATSAPP
+  MAIL
+  PHONE
+}
+
+enum PurchaseMessageLanguage {
+  TR
+  EN
+}
+
+enum PurchaseSendMode {
+  manual
+  draft
+  backend
+}
+
+model RawMaterialPriceRecord {
+  id String @id @default(cuid())
+
+  supplierId String
+  productId  String?
+
+  priceRequestSupplierId String?
+
+  rawMaterialName String
+
+  price         Decimal  @db.Decimal(18, 4)
+  previousPrice Decimal? @db.Decimal(18, 4)
+
+  currency String @default("USD")
+  unit     String @default("ton")
+
+  priceDate  DateTime  @db.Date
+  validUntil DateTime? @db.Date
+
+  source PriceRecordSource @default(MANUAL)
+
+  paymentTerm String?
+  deliveryDay Int?
+
+  note String?
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  product  Product? @relation(fields: [productId], references: [id])
+
+  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id])
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([productId])
+  @@index([priceRequestSupplierId])
+  @@index([rawMaterialName])
+  @@index([priceDate])
+  @@index([validUntil])
+  @@index([source])
+  @@index([paymentTerm])
+  @@index([deliveryDay])
+}
+
+model RawMaterialPriceRequestDraft {
+  id String @id @default(cuid())
+
+  channel PriceRequestChannel
+
+  title   String
+  subject String?
+  message String
+
+  isActive Boolean @default(true)
+
+  requests RawMaterialPriceRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([channel])
+  @@index([isActive])
+}
+
+model RawMaterialPriceRequest {
+  id String @id @default(cuid())
+
+  draftId String?
+
+  rawMaterialName String?
+  productId        String?
+
+  channel PriceRequestChannel
+
+  subject String?
+  message String
+
+  requestedAt DateTime @default(now())
+
+  draft   RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  suppliers RawMaterialPriceRequestSupplier[]
+
+  createdAt DateTime @default(now())
+
+  @@index([draftId])
+  @@index([productId])
+  @@index([rawMaterialName])
+  @@index([requestedAt])
+}
+
+model RawMaterialPriceRequestSupplier {
+  id String @id @default(cuid())
+
+  requestId  String
+  supplierId String
+  contactId  String?
+
+  channel PriceRequestChannel
+  status  PriceRequestSupplierStatus @default(DRAFT)
+
+  token          String?   @unique
+  tokenExpiresAt DateTime?
+  respondedAt    DateTime?
+
+  sentAt DateTime?
+  error  String?
+
+  request  RawMaterialPriceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  supplier Supplier                @relation(fields: [supplierId], references: [id])
+
+  priceRecords RawMaterialPriceRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([requestId, supplierId])
+  @@index([requestId])
+  @@index([supplierId])
+  @@index([contactId])
+  @@index([status])
+  @@index([token])
+  @@index([tokenExpiresAt])
+  @@index([respondedAt])
+}
+
+model RawMaterialPurchaseSettings {
+  id String @id @default(cuid())
+
+  enabled Boolean @default(true)
+
+  messageLanguage PurchaseMessageLanguage @default(EN)
+
+  sendMode PurchaseSendMode @default(manual)
+
+  defaultCountryCode String @default("90")
+
+  mailSubjectTr String?
+  mailSubjectEn String?
+
+  messageTr String
+  messageEn String
+
+  addProductName Boolean @default(true)
+  addPaymentTerm Boolean @default(true)
+  addDeliveryTerm Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

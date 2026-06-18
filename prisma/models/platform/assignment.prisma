@@ -1,0 +1,83 @@
+enum AssignmentModule {
+  PURCHASING
+  SUPPLIER
+  QUALITY
+  PRODUCTION
+  SHIPMENT
+  MAINTENANCE
+  SALES
+  IMPORT
+  ACCOUNTING
+  UTILITY
+  SYSTEM
+}
+
+enum AssignmentEntityType {
+  PURCHASE_INVOICE
+  PURCHASE_REQUEST
+  PURCHASE_ORDER
+
+  SUPPLIER
+  SUPPLIER_DOCUMENT
+
+  QUALITY_INSPECTION
+  QUALITY_CERTIFICATE
+  QUALITY_DEVIATION
+
+  PRODUCTION_ORDER
+  PRODUCTION_BATCH
+
+  SHIPMENT_PLAN
+  DISPATCH_NOTE
+
+  MAINTENANCE
+  EQUIPMENT
+
+  SALES_ORDER
+  SALES_DISCOUNT
+
+  IMPORT_REQUEST
+
+  UTILITY_READING
+
+  OTHER
+}
+
+enum AssignmentRole {
+  RESPONSIBLE
+  VIEWER
+  APPROVER
+  REQUESTER
+  OWNER
+  FOLLOWER
+}
+
+model Assignment {
+  id          String @id @default(cuid())
+
+  module      AssignmentModule
+  entityType  AssignmentEntityType
+  entityId    String
+
+  userId      String
+  user        User @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  role        AssignmentRole @default(RESPONSIBLE)
+
+  note        String?
+
+  createdById String?
+  createdBy User? @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([module, entityType, entityId, userId, role])
+  @@index([module])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([role])
+  @@index([createdById])
+
+  @@map("assignments")
+}

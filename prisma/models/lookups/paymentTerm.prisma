@@ -1,0 +1,28 @@
+enum PaymentTermScope {
+  GENERAL              // Malzeme / hizmet satınalma vadeleri
+  RAW_MATERIAL         // Hammadde satınalma vadeleri
+}
+
+model PaymentTerm {
+  id              String @id @default(cuid())
+
+  legacyId        Int? // Eski sistemdeki numeric id değeri
+
+  scope           PaymentTermScope @default(GENERAL) // Vadenin kullanılacağı satınalma türü
+
+  code            String? // Hammadde satınalma için CASH, PN, INV, BL gibi kod
+  name            String // Kullanıcıya gösterilecek vade adı
+
+  days            Int? // Gün bilgisi varsa tutulur: 7, 14, 30 vb.
+  requiresDay     Boolean @default(false) // Hammadde satınalmada gün girişi gerekiyor mu?
+
+  isActive        Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([scope, legacyId])
+  @@unique([scope, name])
+  @@index([scope])
+  @@index([isActive])
+}

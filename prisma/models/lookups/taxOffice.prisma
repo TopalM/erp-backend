@@ -1,0 +1,20 @@
+model TaxOffice {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+
+  cityId Int
+
+  name String
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, name])
+
+  @@index([cityId])
+}

@@ -1,0 +1,12 @@
+model Country {
+  id        Int    @id
+  value     String @db.VarChar(255)
+  iso2      String @unique @db.VarChar(2)
+  phoneCode String @db.VarChar(10)
+
+  cities     City[]
+  subRegions SubRegion[]
+
+  @@index([value])
+  @@map("countries")
+}

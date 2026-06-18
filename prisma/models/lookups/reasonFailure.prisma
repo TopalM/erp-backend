@@ -1,0 +1,14 @@
+model FailureReason {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  maintenances Maintenance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

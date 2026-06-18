@@ -1,0 +1,16 @@
+model Currency {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+  code     String @unique
+  name     String?
+
+  isActive Boolean @default(true)
+
+  equipments           Equipment[]
+  maintenances         Maintenance[]
+  maintenanceMaterials MaintenanceMaterial[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

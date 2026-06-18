@@ -1,0 +1,42 @@
+enum AuthEventType {
+  REGISTER_SUCCESS              // Kullanıcı başarıyla kayıt oldu
+
+  LOGIN_SUCCESS                 // Başarılı giriş yapıldı
+  LOGIN_FAILED                  // Başarısız giriş denemesi
+  LOGOUT                        // Kullanıcı sistemden çıkış yaptı
+
+  ACCOUNT_LOCKED                // Çok fazla başarısız giriş nedeniyle hesap kilitlendi
+
+  PASSWORD_RESET_REQUESTED      // Şifre sıfırlama talebi oluşturuldu
+  PASSWORD_RESET_COMPLETED      // Şifre sıfırlama işlemi tamamlandı
+  PASSWORD_CHANGED              // Kullanıcı mevcut şifresini değiştirdi
+
+  EMAIL_VERIFICATION_SENT       // E-posta doğrulama bağlantısı gönderildi
+  EMAIL_VERIFICATION_FAILED     // Geçersiz veya süresi geçmiş doğrulama denemesi yapıldı
+  EMAIL_VERIFIED                // E-posta başarıyla doğrulandı
+}
+
+model AuthEventLog {
+  id            String @id @default(cuid()) // Auth log kaydı benzersiz id'si
+
+  userId        String? // İşlemle ilişkili kullanıcı id'si
+  email         String? // İşlem sırasında kullanılan e-posta adresi
+
+  event         AuthEventType // Gerçekleşen kimlik doğrulama olayı
+
+  ipAddress     String? // İşlemin yapıldığı IP adresi
+  userAgent     String? // Tarayıcı, işletim sistemi ve cihaz bilgisi
+
+  success       Boolean @default(false) // İşlem başarılı mı?
+
+  message       String? // Hata mesajı veya açıklama
+
+  createdAt     DateTime @default(now()) // Log oluşturulma tarihi
+
+  user          User? @relation(fields: [userId], references: [id], onDelete: SetNull) // İşlemle ilişkili kullanıcı
+
+  @@index([userId])
+  @@index([email])
+  @@index([event])
+  @@index([createdAt])
+}

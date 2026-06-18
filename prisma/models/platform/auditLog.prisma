@@ -1,0 +1,67 @@
+enum AuditModule {
+  AUTH                            // Kimlik doğrulama işlemleri
+  USER                            // Kullanıcı işlemleri
+  ROLE                            // Rol işlemleri
+  PERMISSION                      // Yetki işlemleri
+  SUPPLIER                        // Tedarikçi işlemleri
+  PRODUCT                         // Ürün işlemleri
+  PURCHASE                        // Satınalma işlemleri
+  RAW_MATERIAL_RECEIPT            // Hammadde kabul işlemleri
+  QUALITY                         // Kalite işlemleri
+  MAINTENANCE                     // Bakım işlemleri
+  PRODUCTION                      // Üretim işlemleri
+  STORAGE                         // Dosya depolama işlemleri
+  SYSTEM                          // Sistem işlemleri
+}
+
+enum AuditAction {
+  CREATE                          // Yeni kayıt oluşturma
+  UPDATE                          // Kayıt güncelleme
+  DELETE                          // Kayıt silme
+  RESTORE                         // Silinen kaydı geri alma
+
+  LOGIN                           // Sisteme giriş
+  LOGOUT                          // Sistemden çıkış
+
+  APPROVE                         // Onay verme
+  REJECT                          // Reddetme
+
+  UPLOAD                          // Dosya yükleme
+  DOWNLOAD                        // Dosya indirme
+
+  USER_ACTIVATED                  // Kullanıcı aktif edildi
+  USER_DEACTIVATED                // Kullanıcı pasif edildi
+  USER_ROLE_UPDATED               // Kullanıcı rolü güncellendi
+  USER_DEPARTMENT_UPDATED         // Kullanıcı departmanı güncellendi
+  USER_FORCE_LOGOUT               // Kullanıcının oturumları sonlandırıldı
+
+  ERROR                           // Hata oluşması
+}
+
+model AuditLog {
+  id              String @id @default(cuid()) // Audit log benzersiz id'si
+
+  actorUserId     String? // İşlemi yapan kullanıcı id'si
+  actorEmail      String? // İşlemi yapan kullanıcı e-postası
+
+  entityType      AuditModule // İşlem yapılan modül
+  entityId        String? // İşlem yapılan kayıt id'si
+
+  action          AuditAction // Yapılan işlem
+
+  message         String? // İşlem açıklaması
+
+  oldValue        Json? // Değişiklik öncesi veri
+  newValue        Json? // Değişiklik sonrası veri
+
+  ipAddress       String? // İşlemin yapıldığı IP adresi
+  userAgent       String? // Tarayıcı / cihaz bilgisi
+
+  createdAt       DateTime @default(now()) // Log oluşturulma tarihi
+
+  @@index([actorUserId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+}

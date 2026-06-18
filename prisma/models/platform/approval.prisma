@@ -1,0 +1,88 @@
+enum ApprovalModule {
+  PURCHASING
+  SUPPLIER
+  QUALITY
+  PRODUCTION
+  SHIPMENT
+  MAINTENANCE
+  SALES
+  IMPORT
+  ACCOUNTING
+  UTILITY
+  SYSTEM
+}
+
+enum ApprovalEntityType {
+  PURCHASE_REQUEST
+  PURCHASE_ORDER
+  PURCHASE_INVOICE
+
+  SUPPLIER
+  SUPPLIER_DOCUMENT
+
+  QUALITY_INSPECTION
+  QUALITY_DEVIATION
+  QUALITY_CERTIFICATE
+
+  PRODUCTION_ORDER
+  PRODUCTION_BATCH
+
+  SHIPMENT_PLAN
+  DISPATCH_NOTE
+
+  MAINTENANCE
+  EQUIPMENT
+
+  SALES_ORDER
+  SALES_DISCOUNT
+
+  IMPORT_REQUEST
+
+  UTILITY_READING
+
+  OTHER
+}
+
+enum ApprovalStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model Approval {
+  id String @id @default(cuid())
+
+  module     ApprovalModule
+  entityType ApprovalEntityType
+  entityId   String
+
+  status ApprovalStatus @default(PENDING)
+
+  requestedById String?
+  requestedBy   User? @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  approverId String?
+  approver   User? @relation("ApprovalApprover", fields: [approverId], references: [id], onDelete: SetNull)
+
+  requestedAt DateTime @default(now())
+  decidedAt   DateTime?
+
+  decisionNote String?
+  rejectReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([module, entityType, entityId])
+  @@index([module])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([approverId])
+  @@index([requestedAt])
+  @@index([decidedAt])
+
+  @@map("approvals")
+}

@@ -1,0 +1,97 @@
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  SENT_TO_IMPORT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum PurchaseOrderType {
+  DOMESTIC
+  IMPORT
+}
+
+model PurchaseOrder {
+  id String @id @default(cuid())
+
+  supplierId String
+
+  orderNo String @unique
+
+  orderDate    DateTime  @db.Date
+  deliveryDate DateTime? @db.Date
+
+  paymentTerm String?
+  deliveryDay  Int?
+
+  status    PurchaseOrderStatus @default(DRAFT)
+  orderType PurchaseOrderType   @default(DOMESTIC)
+
+  currency String @default("USD")
+  note     String?
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  items    PurchaseOrderItem[]
+  receipts RawMaterialReceipt[]
+
+  attachments PurchaseOrderAttachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([supplierId])
+  @@index([orderDate])
+  @@index([status])
+  @@index([orderType])
+  @@index([deletedAt])
+}
+
+model PurchaseOrderItem {
+  id String @id @default(cuid())
+
+  purchaseOrderId String
+  productId       String?
+  priceRecordId   String?
+
+  rawMaterialName String
+
+  quantity  Decimal @db.Decimal(18, 4)
+  unit      String  @default("ton")
+  unitPrice Decimal @db.Decimal(18, 4)
+  currency  String  @default("USD")
+
+  note String?
+
+  purchaseOrder PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product?                @relation(fields: [productId], references: [id])
+  priceRecord   RawMaterialPriceRecord? @relation(fields: [priceRecordId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([priceRecordId])
+  @@index([rawMaterialName])
+}
+
+model PurchaseOrderAttachment {
+  id String @id @default(cuid())
+
+  purchaseOrderId String
+
+  originalName String
+  fileName     String
+  mimeType     String?
+  size         Int
+  path         String
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+}

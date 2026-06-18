@@ -1,0 +1,14 @@
+model Department {
+  id          String @id @default(cuid()) // Departman benzersiz id'si
+
+  name        String // Departman adı
+  code        String @unique // Departman kodu
+
+  users       User[] // Bu departmana bağlı kullanıcı hesapları
+  employees   Employee[] // Bu departmana bağlı çalışanlar
+
+  createdAt   DateTime @default(now()) // Oluşturulma tarihi
+  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
+
+  @@index([name])
+}

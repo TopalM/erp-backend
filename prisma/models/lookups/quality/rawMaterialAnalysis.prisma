@@ -1,0 +1,42 @@
+model RawMaterialAnalysisParameter {
+  id String @id @default(cuid())
+
+  legacyId Int? @unique
+
+  name      String
+  fieldKey  String @unique
+  unit      String?
+  cleaned   Boolean @default(false)
+
+  customSelect Boolean @default(false)
+  lengthValue  Int?
+
+  isActive Boolean @default(true)
+
+  options RawMaterialAnalysisOption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model RawMaterialAnalysisOption {
+  id String @id @default(cuid())
+
+  legacyId Int?
+
+  parameterId String
+  parameter   RawMaterialAnalysisParameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+
+  value String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parameterId, value])
+  @@unique([parameterId, legacyId])
+  @@index([parameterId])
+}

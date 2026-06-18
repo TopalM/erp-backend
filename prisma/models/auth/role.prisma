@@ -1,0 +1,11 @@
+model Role {
+  id            String @id @default(cuid()) // Rol benzersiz id'si
+
+  name          String @unique // Rol adı: ADMIN, HR, PURCHASING, QUALITY, MAINTENANCE vb.
+  description   String? // Rolün açıklaması ve kullanım amacı
+
+  users         User[] // Bu role atanmış kullanıcılar
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

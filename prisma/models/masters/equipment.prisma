@@ -1,0 +1,80 @@
+enum EquipmentLevel {
+  MAIN
+  SUB
+}
+
+model Equipment {
+  id Int @id @default(autoincrement())
+
+  equipmentCode String? @unique
+  equipmentName String
+
+  level EquipmentLevel @default(MAIN)
+
+  parentId Int?
+  parent   Equipment?  @relation("EquipmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Equipment[] @relation("EquipmentHierarchy")
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  commissioningDate DateTime?
+
+  tradeMarkId Int?
+  tradeMark   EquipmentTradeMark? @relation(fields: [tradeMarkId], references: [id], onDelete: SetNull)
+
+  model String?
+
+  productionYear Int?
+
+  machineTypeId String?
+  machineType   MachineType? @relation(fields: [machineTypeId], references: [id], onDelete: SetNull)
+
+  isExproof Boolean @default(false)
+
+  price Decimal? @db.Decimal(18, 2)
+
+  currencyId String?
+  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+
+  isScrap   Boolean   @default(false)
+  scrapDate DateTime?
+
+  lastMaintenanceDate DateTime?
+
+  description String?
+
+  maintenancesAsMain Maintenance[] @relation("MaintenanceMainEquipment")
+  maintenancesAsSub  Maintenance[] @relation("MaintenanceSubEquipment")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([equipmentName])
+  @@index([level])
+  @@index([parentId])
+  @@index([locationId])
+  @@index([tradeMarkId])
+  @@index([machineTypeId])
+  @@index([currencyId])
+  @@index([isScrap])
+  @@index([deletedAt])
+  @@map("equipments")
+}
+
+model EquipmentTradeMark {
+  id Int @id @default(autoincrement())
+
+  tradeMark String @unique
+
+  equipments Equipment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([tradeMark])
+  @@index([deletedAt])
+  @@map("equipment_trade_marks")
+}
