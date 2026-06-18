@@ -7,6 +7,8 @@ model Department {
   users       User[] // Bu departmana bağlı kullanıcı hesapları
   employees   Employee[] // Bu departmana bağlı çalışanlar
 
+  purchaseRequests PurchaseRequest[]
+
   createdAt   DateTime @default(now()) // Oluşturulma tarihi
   updatedAt   DateTime @updatedAt // Son güncellenme tarihi
 

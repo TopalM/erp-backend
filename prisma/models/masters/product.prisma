@@ -1,13 +1,13 @@
 model Product {
   id String @id @default(cuid())
 
-  supplierRawMaterials SupplierRawMaterial[]
-
   rawMaterialPriceRecords RawMaterialPriceRecord[]
   rawMaterialPriceRequests RawMaterialPriceRequest[]
 
   purchaseOrderItems PurchaseOrderItem[]
   rawMaterialReceiptItems RawMaterialReceiptItem[]
+
+  purchaseRequestItems PurchaseRequestItem[]
 
   productionJobs    ProductionJob[]    @relation("ProductionJobProduct")
   productionInputs  ProductionInput[]  @relation("ProductionInputProduct")

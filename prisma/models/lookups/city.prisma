@@ -12,6 +12,8 @@ model City {
 
   employees     Employee[] // Bu şehirde kayıtlı çalışanlar
 
+  suppliers     Supplier[]
+
   @@index([countryId])
 
   @@map("cities")

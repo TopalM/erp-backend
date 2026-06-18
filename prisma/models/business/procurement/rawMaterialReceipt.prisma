@@ -1,4 +1,3 @@
-
 enum RawMaterialReceiptStatus {
   DRAFT
   RECEIVED
@@ -25,8 +24,8 @@ model RawMaterialReceipt {
 
   note String?
 
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
 
   items RawMaterialReceiptItem[]
 
@@ -45,24 +44,28 @@ model RawMaterialReceiptItem {
   id String @id @default(cuid())
 
   receiptId String
-  productId String?
 
-  rawMaterialName String
+  rawMaterialId String
+  productId     String?
 
   quantity Decimal @db.Decimal(18, 4)
-  unit     String  @default("ton")
+
+  unitId String?
+  unit   Unit? @relation("RawMaterialReceiptItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
 
   lotNo String?
 
-  receipt RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  product Product?           @relation(fields: [productId], references: [id])
+  receipt     RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   productionInputs ProductionInput[]
 
   createdAt DateTime @default(now())
 
+  @@index([unitId])
   @@index([receiptId])
+  @@index([rawMaterialId])
   @@index([productId])
-  @@index([rawMaterialName])
   @@index([lotNo])
 }

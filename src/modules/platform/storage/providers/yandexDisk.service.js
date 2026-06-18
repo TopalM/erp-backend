@@ -6,22 +6,35 @@ import { storageClient } from "../storage.client.js";
 import { storageConfig } from "../storage.config.js";
 import { normalizeStorageError } from "../storage.errors.js";
 
-// Path parçalarını temizler.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isTemporaryYandexError = (error) => {
+  const status = error.response?.status;
+  const code = error.response?.data?.error;
+  const message = String(error.response?.data?.message || error.response?.data?.description || error.message || "");
+
+  return (
+    status === 423 ||
+    status === 429 ||
+    code === "DiskResourceLockedError" ||
+    code === "TooManyRequestsError" ||
+    message.includes("заблокирован") ||
+    message.toLowerCase().includes("locked")
+  );
+};
+
 const normalizePathPart = (value) => {
   return String(value || "")
     .trim()
     .replace(/^\/+|\/+$/g, "");
 };
 
-// Yandex Disk path üretir.
-// Örnek: disk:/PlastifayERP/suppliers/documents/file.pdf
 export const buildPath = (...parts) => {
   const cleanParts = [storageConfig.appRoot, ...parts].map(normalizePathPart).filter(Boolean);
 
   return `disk:/${cleanParts.join("/")}`;
 };
 
-// Yandex Disk bağlantısını kontrol eder.
 export const checkConnection = async () => {
   try {
     const response = await storageClient.get("/");
@@ -31,7 +44,6 @@ export const checkConnection = async () => {
   }
 };
 
-// Kaynak bilgisi getirir.
 export const getResourceInfo = async (diskPath) => {
   try {
     const response = await storageClient.get("/resources", {
@@ -46,7 +58,6 @@ export const getResourceInfo = async (diskPath) => {
   }
 };
 
-// Kaynak var mı kontrol eder.
 export const resourceExists = async (diskPath) => {
   try {
     await getResourceInfo(diskPath);
@@ -60,7 +71,6 @@ export const resourceExists = async (diskPath) => {
   }
 };
 
-// Klasör oluşturur.
 export const ensureFolder = async (...parts) => {
   const cleanParts = [storageConfig.appRoot, ...parts].map(normalizePathPart).filter(Boolean);
 
@@ -69,14 +79,25 @@ export const ensureFolder = async (...parts) => {
   for (const part of cleanParts) {
     currentPath = `${currentPath}/${part}`;
 
-    try {
-      await storageClient.put("/resources", null, {
-        params: {
-          path: currentPath,
-        },
-      });
-    } catch (error) {
-      if (error.response?.status !== 409) {
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      try {
+        await storageClient.put("/resources", null, {
+          params: {
+            path: currentPath,
+          },
+        });
+
+        break;
+      } catch (error) {
+        if (error.response?.status === 409) {
+          break;
+        }
+
+        if (isTemporaryYandexError(error) && attempt < 4) {
+          await sleep(500 * attempt);
+          continue;
+        }
+
         throw normalizeStorageError(error, "Storage klasörü oluşturulamadı.");
       }
     }
@@ -85,7 +106,6 @@ export const ensureFolder = async (...parts) => {
   return currentPath;
 };
 
-// Lokal dosyayı Yandex Disk'e yükler.
 export const uploadFile = async ({ localFilePath, storagePath, overwrite = true }) => {
   try {
     if (!localFilePath || !fs.existsSync(localFilePath)) {
@@ -96,21 +116,49 @@ export const uploadFile = async ({ localFilePath, storagePath, overwrite = true 
       await deleteFile(storagePath);
     }
 
-    const uploadLinkResponse = await storageClient.get("/resources/upload", {
-      params: {
-        path: storagePath,
-        overwrite: overwrite ? "true" : "false",
-      },
-    });
+    let uploadLinkResponse;
 
-    await axios.put(uploadLinkResponse.data.href, fs.createReadStream(localFilePath), {
-      headers: {
-        "Content-Type": "application/octet-stream",
-      },
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity,
-      timeout: 120000,
-    });
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      try {
+        uploadLinkResponse = await storageClient.get("/resources/upload", {
+          params: {
+            path: storagePath,
+            overwrite: overwrite ? "true" : "false",
+          },
+        });
+
+        break;
+      } catch (error) {
+        if (isTemporaryYandexError(error) && attempt < 4) {
+          await sleep(500 * attempt);
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      try {
+        await axios.put(uploadLinkResponse.data.href, fs.createReadStream(localFilePath), {
+          headers: {
+            "Content-Type": "application/octet-stream",
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          timeout: 120000,
+        });
+
+        break;
+      } catch (error) {
+        if (isTemporaryYandexError(error) && attempt < 4) {
+          await sleep(500 * attempt);
+          continue;
+        }
+
+        throw error;
+      }
+    }
 
     return {
       storagePath,
@@ -129,29 +177,36 @@ export const uploadFile = async ({ localFilePath, storagePath, overwrite = true 
   }
 };
 
-// Dosya veya klasör siler.
 export const deleteFile = async (storagePath) => {
   if (!storagePath) return true;
 
-  try {
-    await storageClient.delete("/resources", {
-      params: {
-        path: storagePath,
-        permanently: true,
-      },
-    });
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      await storageClient.delete("/resources", {
+        params: {
+          path: storagePath,
+          permanently: true,
+        },
+      });
 
-    return true;
-  } catch (error) {
-    if (error.response?.status === 404) {
       return true;
-    }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return true;
+      }
 
-    throw normalizeStorageError(error, "Storage dosya silme hatası.");
+      if (isTemporaryYandexError(error) && attempt < 4) {
+        await sleep(500 * attempt);
+        continue;
+      }
+
+      throw normalizeStorageError(error, "Storage dosya silme hatası.");
+    }
   }
+
+  return true;
 };
 
-// Geçici indirme linki üretir.
 export const getDownloadUrl = async (storagePath) => {
   try {
     const response = await storageClient.get("/resources/download", {
@@ -166,7 +221,6 @@ export const getDownloadUrl = async (storagePath) => {
   }
 };
 
-// Dosya veya klasör taşır.
 export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
   try {
     await storageClient.post("/resources/move", null, {
@@ -186,7 +240,6 @@ export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
   }
 };
 
-// Dosya veya klasör kopyalar.
 export const copyResource = async ({ fromPath, toPath, overwrite = true }) => {
   try {
     await storageClient.post("/resources/copy", null, {
@@ -206,7 +259,6 @@ export const copyResource = async ({ fromPath, toPath, overwrite = true }) => {
   }
 };
 
-// Dosyayı public hale getirir.
 export const publishResource = async (storagePath) => {
   try {
     await storageClient.put("/resources/publish", null, {
@@ -221,7 +273,6 @@ export const publishResource = async (storagePath) => {
   }
 };
 
-// Public paylaşımı kaldırır.
 export const unpublishResource = async (storagePath) => {
   try {
     await storageClient.put("/resources/unpublish", null, {

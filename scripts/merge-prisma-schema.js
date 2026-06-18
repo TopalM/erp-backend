@@ -11,6 +11,7 @@ const order = [
 
   "business/maintenance/maintenance.prisma",
   "business/procurement/priceRequest.prisma",
+  "business/procurement/purchaseRequest.prisma",
   "business/procurement/purchaseOrder.prisma",
   "business/procurement/rawMaterialReceipt.prisma",
   "business/production/production.prisma",
@@ -19,6 +20,7 @@ const order = [
 
   "core/base.prisma",
 
+  "lookups/unit.prisma",
   "lookups/bloodType.prisma",
   "lookups/city.prisma",
   "lookups/country.prisma",

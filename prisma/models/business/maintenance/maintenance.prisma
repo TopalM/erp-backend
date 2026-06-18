@@ -21,21 +21,26 @@ model Maintenance {
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   mainEquipmentId Int
-  mainEquipment   Equipment @relation("MaintenanceMainEquipment", fields: [mainEquipmentId], references: [id])
+  mainEquipment   Equipment @relation("MaintenanceMainEquipment", fields: [mainEquipmentId], references: [id], onDelete: Restrict)
 
   subEquipmentId Int?
-  subEquipment   Equipment? @relation("MaintenanceSubEquipment", fields: [subEquipmentId], references: [id])
+  subEquipment   Equipment? @relation("MaintenanceSubEquipment", fields: [subEquipmentId], references: [id], onDelete: SetNull)
 
   supplierId String?
   supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
   status MaintenanceStatus @default(OPEN)
 
-  requester String?
-  savedBy   String?
-  revisedBy String?
+  requestedByEmployeeId String?
+  requestedByEmployee   Employee? @relation("MaintenanceRequestedByEmployee", fields: [requestedByEmployeeId], references: [id], onDelete: SetNull)
 
-  revisedDate DateTime @default(now())
+  savedById String?
+  savedBy   User? @relation("MaintenanceSavedBy", fields: [savedById], references: [id], onDelete: SetNull)
+
+  revisedById String?
+  revisedBy   User? @relation("MaintenanceRevisedBy", fields: [revisedById], references: [id], onDelete: SetNull)
+
+  revisedDate DateTime?
 
   description          String
   endOfWorkDescription String?
@@ -76,6 +81,9 @@ model Maintenance {
   @@index([mainEquipmentId])
   @@index([subEquipmentId])
   @@index([supplierId])
+  @@index([requestedByEmployeeId])
+  @@index([savedById])
+  @@index([revisedById])
   @@index([faultTypeId])
   @@index([reasonFailureId])
   @@index([currencyId])

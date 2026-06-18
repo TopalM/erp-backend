@@ -1,0 +1,97 @@
+enum PurchaseRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ORDERED
+  CANCELLED
+}
+
+enum PurchaseRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model PurchaseRequest {
+  id String @id @default(cuid())
+
+  requestNo String @unique
+
+  requestedById String
+  requestedBy   User @relation("PurchaseRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  status   PurchaseRequestStatus   @default(DRAFT)
+  priority PurchaseRequestPriority @default(NORMAL)
+
+  requestedDate DateTime @default(now()) @db.Date
+  neededDate    DateTime? @db.Date
+
+  reason String?
+  note   String?
+
+  items PurchaseRequestItem[]
+
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([requestNo])
+  @@index([requestedById])
+  @@index([departmentId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestedDate])
+  @@index([neededDate])
+  @@index([deletedAt])
+}
+
+model PurchaseRequestItem {
+  id String @id @default(cuid())
+
+  purchaseRequestId String
+
+  category PurchaseCategory
+
+  rawMaterialId String?
+  productId     String?
+
+  serviceName  String?
+  materialName String?
+  description  String?
+
+  quantity Decimal @db.Decimal(18, 4)
+  
+  unitId String?
+  unit   Unit? @relation("PurchaseRequestItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
+
+  estimatedUnitPrice Decimal? @db.Decimal(18, 4)
+
+  currencyId String?
+  currency   Currency? @relation("PurchaseRequestItemCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
+
+  note String?
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+  @@index([purchaseRequestId])
+  @@index([category])
+  @@index([rawMaterialId])
+  @@index([productId])
+  @@index([currencyId])
+}

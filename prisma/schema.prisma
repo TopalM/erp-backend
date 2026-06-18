@@ -4,60 +4,67 @@
 
 // ---- auth/user.prisma ----
 model User {
-  id                          String @id @default(cuid()) // Kullanıcı benzersiz id'si
+  id String @id @default(cuid()) // Kullanıcı benzersiz id'si
 
-  firstName                   String // Kullanıcının adı
-  lastName                    String // Kullanıcının soyadı
+  firstName String // Kullanıcının adı
+  lastName  String // Kullanıcının soyadı
 
-  email                       String @unique // Kullanıcının giriş yaptığı benzersiz e-posta adresi
-  passwordHash                String // Hashlenmiş kullanıcı parolası
+  email        String @unique // Kullanıcının giriş yaptığı benzersiz e-posta adresi
+  passwordHash String // Hashlenmiş kullanıcı parolası
 
-  isActive                    Boolean @default(true) // Kullanıcı hesabı aktif mi?
-  tokenVersion                Int @default(0) // JWT tokenlarını geçersiz kılmak için kullanılan versiyon numarası
-  failedLoginAttempts         Int @default(0) // Başarısız giriş deneme sayısı
-  lockedUntil                 DateTime? // Hesap kilitliyse kilidin sona ereceği tarih
-  lastLoginAt                 DateTime? // Son başarılı giriş tarihi
+  isActive            Boolean   @default(true) // Kullanıcı hesabı aktif mi?
+  tokenVersion        Int       @default(0) // JWT tokenlarını geçersiz kılmak için kullanılan versiyon numarası
+  failedLoginAttempts Int       @default(0) // Başarısız giriş deneme sayısı
+  lockedUntil         DateTime? // Hesap kilitliyse kilidin sona ereceği tarih
+  lastLoginAt         DateTime? // Son başarılı giriş tarihi
 
-  departmentId                String? // Kullanıcının bağlı olduğu departman id'si
-  department                  Department? @relation(fields: [departmentId], references: [id]) // Kullanıcının bağlı olduğu departman
+  departmentId String? // Kullanıcının bağlı olduğu departman id'si
+  department   Department? @relation(fields: [departmentId], references: [id]) // Kullanıcının bağlı olduğu departman
 
-  roleId                      String // Kullanıcının rol id'si
-  role                        Role @relation(fields: [roleId], references: [id]) // Kullanıcının rolü
+  roleId String // Kullanıcının rol id'si
+  role   Role @relation(fields: [roleId], references: [id]) // Kullanıcının rolü
 
-  userPermissions             UserPermission[] // Kullanıcıya özel atanmış ek yetkiler
+  userPermissions UserPermission[] // Kullanıcıya özel atanmış ek yetkiler
 
-  createdSuppliers            Supplier[] @relation("SupplierCreatedBy") // Kullanıcının oluşturduğu tedarikçi kayıtları
-  updatedSuppliers            Supplier[] @relation("SupplierUpdatedBy") // Kullanıcının güncellediği tedarikçi kayıtları
-  deletedSuppliers            Supplier[] @relation("SupplierDeletedBy") // Kullanıcının sildiği/pasife aldığı tedarikçi kayıtları
+  createdSuppliers Supplier[] @relation("SupplierCreatedBy") // Kullanıcının oluşturduğu tedarikçi kayıtları
+  updatedSuppliers Supplier[] @relation("SupplierUpdatedBy") // Kullanıcının güncellediği tedarikçi kayıtları
+  deletedSuppliers Supplier[] @relation("SupplierDeletedBy") // Kullanıcının sildiği/pasife aldığı tedarikçi kayıtları
 
-  supplierEvaluations         SupplierEvaluation[] // Kullanıcının yaptığı tedarikçi değerlendirme kayıtları
+  supplierEvaluations SupplierEvaluation[] // Kullanıcının yaptığı tedarikçi değerlendirme kayıtları
 
-  documentsUploaded           Document[] @relation("UserUploadedDocuments") // Kullanıcının yüklediği merkezi dokümanlar
+  documentsUploaded Document[] @relation("UserUploadedDocuments") // Kullanıcının merkezi doküman sistemine yüklediği dosyalar
 
-  approvalsRequested          Approval[] @relation("ApprovalRequestedBy") // Kullanıcının onaya gönderdiği kayıtlar
-  approvalsToDecide           Approval[] @relation("ApprovalApprover") // Kullanıcının onaylayacağı / reddedeceği kayıtlar
+  approvalsRequested Approval[] @relation("ApprovalRequestedBy") // Kullanıcının onaya gönderdiği kayıtlar
+  approvalsToDecide  Approval[] @relation("ApprovalApprover") // Kullanıcının onaylayacağı / reddedeceği kayıtlar
 
-  assignments                 Assignment[] @relation("AssignmentUser") // Kullanıcının sorumlu / ilgili olduğu kayıtlar
-  assignmentsCreated          Assignment[] @relation("AssignmentCreatedBy") // Kullanıcının oluşturduğu sorumluluk atamaları
+  assignments        Assignment[] @relation("AssignmentUser") // Kullanıcının sorumlu / ilgili olduğu kayıtlar
+  assignmentsCreated Assignment[] @relation("AssignmentCreatedBy") // Kullanıcının oluşturduğu sorumluluk atamaları
 
-  authEventLogs               AuthEventLog[] // Kullanıcının giriş, çıkış, şifre değişikliği vb. güvenlik kayıtları
+  savedMaintenances   Maintenance[] @relation("MaintenanceSavedBy") // Kullanıcının kaydettiği bakım kayıtları
+  revisedMaintenances Maintenance[] @relation("MaintenanceRevisedBy") // Kullanıcının revize ettiği bakım kayıtları
 
-  passwordResetToken          String? @unique // Şifre sıfırlama işlemi için oluşturulan benzersiz token
-  passwordResetExpires        DateTime? // Şifre sıfırlama tokenının geçerlilik süresi
+  purchaseRequestsRequested PurchaseRequest[] @relation("PurchaseRequestRequestedBy")
 
-  phone                       String? // Kullanıcının telefon numarası
-  profilePhotoUrl             String? // Profil fotoğrafı dosya yolu / URL bilgisi
+  createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
 
-  preferredTheme              String? @default("light") // Kullanıcının tercih ettiği tema (light, dark vb.)
+  authEventLogs AuthEventLog[] // Kullanıcının giriş, çıkış, şifre değişikliği vb. güvenlik kayıtları
 
-  emailVerifiedAt             DateTime? // E-posta adresinin doğrulandığı tarih
-  emailVerificationToken      String? @unique // E-posta doğrulama tokenı
-  emailVerificationExpires    DateTime? // E-posta doğrulama tokenının geçerlilik süresi
+  passwordResetToken   String?   @unique // Şifre sıfırlama işlemi için oluşturulan benzersiz token
+  passwordResetExpires DateTime? // Şifre sıfırlama tokenının geçerlilik süresi
 
-  employee                    Employee? // Kullanıcıya bağlı çalışan kaydı
+  phone           String? // Kullanıcının telefon numarası
+  profilePhotoUrl String? // Profil fotoğrafının storage path bilgisi
 
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  preferredTheme String? @default("light") // Kullanıcının tercih ettiği tema
+
+  emailVerifiedAt          DateTime? // E-posta adresinin doğrulandığı tarih
+  emailVerificationToken   String?   @unique // E-posta doğrulama tokenı
+  emailVerificationExpires DateTime? // E-posta doğrulama tokenının geçerlilik süresi
+
+  employee Employee? // Kullanıcıya bağlı çalışan kaydı
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---- auth/permission.prisma ----
@@ -137,21 +144,26 @@ model Maintenance {
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   mainEquipmentId Int
-  mainEquipment   Equipment @relation("MaintenanceMainEquipment", fields: [mainEquipmentId], references: [id])
+  mainEquipment   Equipment @relation("MaintenanceMainEquipment", fields: [mainEquipmentId], references: [id], onDelete: Restrict)
 
   subEquipmentId Int?
-  subEquipment   Equipment? @relation("MaintenanceSubEquipment", fields: [subEquipmentId], references: [id])
+  subEquipment   Equipment? @relation("MaintenanceSubEquipment", fields: [subEquipmentId], references: [id], onDelete: SetNull)
 
   supplierId String?
   supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
   status MaintenanceStatus @default(OPEN)
 
-  requester String?
-  savedBy   String?
-  revisedBy String?
+  requestedByEmployeeId String?
+  requestedByEmployee   Employee? @relation("MaintenanceRequestedByEmployee", fields: [requestedByEmployeeId], references: [id], onDelete: SetNull)
 
-  revisedDate DateTime @default(now())
+  savedById String?
+  savedBy   User? @relation("MaintenanceSavedBy", fields: [savedById], references: [id], onDelete: SetNull)
+
+  revisedById String?
+  revisedBy   User? @relation("MaintenanceRevisedBy", fields: [revisedById], references: [id], onDelete: SetNull)
+
+  revisedDate DateTime?
 
   description          String
   endOfWorkDescription String?
@@ -192,6 +204,9 @@ model Maintenance {
   @@index([mainEquipmentId])
   @@index([subEquipmentId])
   @@index([supplierId])
+  @@index([requestedByEmployeeId])
+  @@index([savedById])
+  @@index([revisedById])
   @@index([faultTypeId])
   @@index([reasonFailureId])
   @@index([currencyId])
@@ -272,11 +287,6 @@ model MaintenanceSchedule {
 }
 
 // ---- business/procurement/priceRequest.prisma ----
-enum PriceRequestChannel {
-  MAIL
-  WHATSAPP
-}
-
 enum PriceRequestSupplierStatus {
   DRAFT
   READY
@@ -288,9 +298,7 @@ enum PriceRequestSupplierStatus {
 
 enum PriceRecordSource {
   MANUAL
-  WHATSAPP
   MAIL
-  PHONE
 }
 
 enum PurchaseMessageLanguage {
@@ -298,67 +306,95 @@ enum PurchaseMessageLanguage {
   EN
 }
 
-enum PurchaseSendMode {
-  manual
-  draft
-  backend
+model RawMaterial {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  supplierRawMaterials SupplierRawMaterial[]
+
+  receiptItems RawMaterialReceiptItem[]
+
+  priceRecords  RawMaterialPriceRecord[]
+  priceRequests RawMaterialPriceRequest[]
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  purchaseRequestItems PurchaseRequestItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([isActive])
 }
 
 model RawMaterialPriceRecord {
   id String @id @default(cuid())
 
   supplierId String
-  productId  String?
+
+  rawMaterialId String
+  productId     String?
 
   priceRequestSupplierId String?
-
-  rawMaterialName String
 
   price         Decimal  @db.Decimal(18, 4)
   previousPrice Decimal? @db.Decimal(18, 4)
 
-  currency String @default("USD")
-  unit     String @default("ton")
+  currencyId String?
+  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+
+  unitId String?
+  unit   Unit? @relation("RawMaterialPriceRecordUnit", fields: [unitId], references: [id], onDelete: SetNull)
 
   priceDate  DateTime  @db.Date
   validUntil DateTime? @db.Date
 
   source PriceRecordSource @default(MANUAL)
 
-  paymentTerm String?
+  paymentTermId String?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id], onDelete: SetNull)
+
   deliveryDay Int?
 
   note String?
 
-  supplier Supplier @relation(fields: [supplierId], references: [id])
-  product  Product? @relation(fields: [productId], references: [id])
+  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id])
+  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id], onDelete: SetNull)
 
   purchaseOrderItems PurchaseOrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([unitId])
   @@index([supplierId])
+  @@index([rawMaterialId])
   @@index([productId])
   @@index([priceRequestSupplierId])
-  @@index([rawMaterialName])
+  @@index([currencyId])
   @@index([priceDate])
   @@index([validUntil])
   @@index([source])
-  @@index([paymentTerm])
+  @@index([paymentTermId])
   @@index([deliveryDay])
 }
 
 model RawMaterialPriceRequestDraft {
   id String @id @default(cuid())
 
-  channel PriceRequestChannel
-
   title   String
   subject String?
   message String
+
+  language PurchaseMessageLanguage @default(EN)
 
   isActive Boolean @default(true)
 
@@ -367,7 +403,7 @@ model RawMaterialPriceRequestDraft {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([channel])
+  @@index([language])
   @@index([isActive])
 }
 
@@ -376,26 +412,25 @@ model RawMaterialPriceRequest {
 
   draftId String?
 
-  rawMaterialName String?
-  productId        String?
-
-  channel PriceRequestChannel
+  rawMaterialId String?
+  productId     String?
 
   subject String?
   message String
 
   requestedAt DateTime @default(now())
 
-  draft   RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id])
-  product Product? @relation(fields: [productId], references: [id])
+  draft       RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  rawMaterial RawMaterial?                  @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
+  product     Product?                      @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   suppliers RawMaterialPriceRequestSupplier[]
 
   createdAt DateTime @default(now())
 
   @@index([draftId])
+  @@index([rawMaterialId])
   @@index([productId])
-  @@index([rawMaterialName])
   @@index([requestedAt])
 }
 
@@ -406,8 +441,7 @@ model RawMaterialPriceRequestSupplier {
   supplierId String
   contactId  String?
 
-  channel PriceRequestChannel
-  status  PriceRequestSupplierStatus @default(DRAFT)
+  status PriceRequestSupplierStatus @default(DRAFT)
 
   token          String?   @unique
   tokenExpiresAt DateTime?
@@ -417,7 +451,7 @@ model RawMaterialPriceRequestSupplier {
   error  String?
 
   request  RawMaterialPriceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  supplier Supplier                @relation(fields: [supplierId], references: [id])
+  supplier Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
   priceRecords RawMaterialPriceRecord[]
 
@@ -441,8 +475,6 @@ model RawMaterialPurchaseSettings {
 
   messageLanguage PurchaseMessageLanguage @default(EN)
 
-  sendMode PurchaseSendMode @default(manual)
-
   defaultCountryCode String @default("90")
 
   mailSubjectTr String?
@@ -451,16 +483,114 @@ model RawMaterialPurchaseSettings {
   messageTr String
   messageEn String
 
-  addProductName Boolean @default(true)
-  addPaymentTerm Boolean @default(true)
+  addProductName  Boolean @default(true)
+  addPaymentTerm  Boolean @default(true)
   addDeliveryTerm Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// ---- business/procurement/purchaseOrder.prisma ----
+// ---- business/procurement/purchaseRequest.prisma ----
+enum PurchaseRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ORDERED
+  CANCELLED
+}
 
+enum PurchaseRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model PurchaseRequest {
+  id String @id @default(cuid())
+
+  requestNo String @unique
+
+  requestedById String
+  requestedBy   User @relation("PurchaseRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  status   PurchaseRequestStatus   @default(DRAFT)
+  priority PurchaseRequestPriority @default(NORMAL)
+
+  requestedDate DateTime @default(now()) @db.Date
+  neededDate    DateTime? @db.Date
+
+  reason String?
+  note   String?
+
+  items PurchaseRequestItem[]
+
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([requestNo])
+  @@index([requestedById])
+  @@index([departmentId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestedDate])
+  @@index([neededDate])
+  @@index([deletedAt])
+}
+
+model PurchaseRequestItem {
+  id String @id @default(cuid())
+
+  purchaseRequestId String
+
+  category PurchaseCategory
+
+  rawMaterialId String?
+  productId     String?
+
+  serviceName  String?
+  materialName String?
+  description  String?
+
+  quantity Decimal @db.Decimal(18, 4)
+  
+  unitId String?
+  unit   Unit? @relation("PurchaseRequestItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
+
+  estimatedUnitPrice Decimal? @db.Decimal(18, 4)
+
+  currencyId String?
+  currency   Currency? @relation("PurchaseRequestItemCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
+
+  note String?
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+
+  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+  @@index([purchaseRequestId])
+  @@index([category])
+  @@index([rawMaterialId])
+  @@index([productId])
+  @@index([currencyId])
+}
+
+// ---- business/procurement/purchaseOrder.prisma ----
 enum PurchaseOrderStatus {
   DRAFT
   ORDERED
@@ -475,40 +605,97 @@ enum PurchaseOrderType {
   IMPORT
 }
 
+enum PurchaseCategory {
+  RAW_MATERIAL
+  PACKAGING
+  MATERIAL
+  TRADE_PRODUCT
+  SERVICE
+  TRANSPORT
+}
+
 model PurchaseOrder {
   id String @id @default(cuid())
 
   supplierId String
-
-  orderNo String @unique
+  orderNo    String @unique
 
   orderDate    DateTime  @db.Date
   deliveryDate DateTime? @db.Date
 
-  paymentTerm String?
-  deliveryDay  Int?
+  purchaseReasonId String?
+  purchaseReason   PurchaseReason? @relation(fields: [purchaseReasonId], references: [id], onDelete: SetNull)
+
+  placeOfUseId String?
+  placeOfUse   PlaceOfUse? @relation(fields: [placeOfUseId], references: [id], onDelete: SetNull)
+
+  purchasedTypeId String?
+  purchasedType   Purchased? @relation(fields: [purchasedTypeId], references: [id], onDelete: SetNull)
+
+  transportTypeId String?
+  transportType   TransportType? @relation(fields: [transportTypeId], references: [id], onDelete: SetNull)
+
+  paymentTermId String?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id], onDelete: SetNull)
+
+  deliveryDay Int?
 
   status    PurchaseOrderStatus @default(DRAFT)
   orderType PurchaseOrderType   @default(DOMESTIC)
 
-  currency String @default("USD")
-  note     String?
+  currencyId String?
+  currency   Currency? @relation("PurchaseOrderCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
 
-  supplier Supplier @relation(fields: [supplierId], references: [id])
+  totalWithoutTax Decimal? @db.Decimal(18, 2)
+  totalTax        Decimal? @db.Decimal(18, 2)
+  totalWithTax    Decimal? @db.Decimal(18, 2)
+
+  isDifferentVat Boolean @default(false)
+
+  isStopaj    Boolean  @default(false)
+  stopajRatio Decimal? @db.Decimal(8, 2)
+  totalStopaj Decimal? @db.Decimal(18, 2)
+
+  isTevkifat    Boolean  @default(false)
+  tevkifatRatio Decimal? @db.Decimal(8, 2)
+  totalTevkifat Decimal? @db.Decimal(18, 2)
+
+  isInsurance Boolean @default(false)
+
+  supplierPointId String?
+  supplierPoint   SupplierPoint? @relation(fields: [supplierPointId], references: [id], onDelete: SetNull)
+
+  purchaseRequestId String?
+  purchaseRequest   PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id], onDelete: SetNull)
+
+  description String?
+  note        String?
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
   items    PurchaseOrderItem[]
   receipts RawMaterialReceipt[]
 
-  attachments PurchaseOrderAttachment[]
+  createdById String?
+  createdBy   User? @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  @@index([purchaseRequestId])
   @@index([supplierId])
   @@index([orderDate])
+  @@index([purchaseReasonId])
+  @@index([placeOfUseId])
+  @@index([purchasedTypeId])
+  @@index([transportTypeId])
+  @@index([paymentTermId])
+  @@index([currencyId])
+  @@index([supplierPointId])
   @@index([status])
   @@index([orderType])
+  @@index([createdById])
   @@index([deletedAt])
 }
 
@@ -516,50 +703,62 @@ model PurchaseOrderItem {
   id String @id @default(cuid())
 
   purchaseOrderId String
-  productId       String?
-  priceRecordId   String?
 
-  rawMaterialName String
+  category PurchaseCategory @default(MATERIAL)
 
-  quantity  Decimal @db.Decimal(18, 4)
-  unit      String  @default("ton")
+  rawMaterialId String?
+  productId     String?
+  priceRecordId String?
+
+  serviceName  String?
+  materialName String?
+  description  String?
+
+  quantity Decimal @db.Decimal(18, 4)
+
+  unitId String?
+  unit   Unit? @relation("PurchaseOrderItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
+
   unitPrice Decimal @db.Decimal(18, 4)
-  currency  String  @default("USD")
+
+  currencyId String?
+  currency   Currency? @relation("PurchaseOrderItemCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
+
+  taxRatioId String?
+  taxRatio   TaxRatio? @relation("PurchaseOrderItemTaxRatio", fields: [taxRatioId], references: [id], onDelete: SetNull)
+
+  differentVatRatioId String?
+  differentVatRatio   TaxRatio? @relation("PurchaseOrderItemDifferentVatRatio", fields: [differentVatRatioId], references: [id], onDelete: SetNull)
+
+  totalWithoutTax Decimal? @db.Decimal(18, 2)
+  taxAmount       Decimal? @db.Decimal(18, 2)
+  totalWithTax    Decimal? @db.Decimal(18, 2)
 
   note String?
 
   purchaseOrder PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product       Product?                @relation(fields: [productId], references: [id])
-  priceRecord   RawMaterialPriceRecord? @relation(fields: [priceRecordId], references: [id])
+  rawMaterial   RawMaterial?            @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
+  product       Product?                @relation(fields: [productId], references: [id], onDelete: SetNull)
+  priceRecord   RawMaterialPriceRecord? @relation(fields: [priceRecordId], references: [id], onDelete: SetNull)
+
+  purchaseRequestItemId String?
+  purchaseRequestItem   PurchaseRequestItem? @relation(fields: [purchaseRequestItemId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
   @@index([purchaseOrderId])
+  @@index([purchaseRequestItemId])
+  @@index([category])
+  @@index([rawMaterialId])
   @@index([productId])
   @@index([priceRecordId])
-  @@index([rawMaterialName])
-}
-
-model PurchaseOrderAttachment {
-  id String @id @default(cuid())
-
-  purchaseOrderId String
-
-  originalName String
-  fileName     String
-  mimeType     String?
-  size         Int
-  path         String
-
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@index([purchaseOrderId])
+  @@index([unitId])
+  @@index([currencyId])
+  @@index([taxRatioId])
+  @@index([differentVatRatioId])
 }
 
 // ---- business/procurement/rawMaterialReceipt.prisma ----
-
 enum RawMaterialReceiptStatus {
   DRAFT
   RECEIVED
@@ -586,8 +785,8 @@ model RawMaterialReceipt {
 
   note String?
 
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
 
   items RawMaterialReceiptItem[]
 
@@ -606,25 +805,29 @@ model RawMaterialReceiptItem {
   id String @id @default(cuid())
 
   receiptId String
-  productId String?
 
-  rawMaterialName String
+  rawMaterialId String
+  productId     String?
 
   quantity Decimal @db.Decimal(18, 4)
-  unit     String  @default("ton")
+
+  unitId String?
+  unit   Unit? @relation("RawMaterialReceiptItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
 
   lotNo String?
 
-  receipt RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  product Product?           @relation(fields: [productId], references: [id])
+  receipt     RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   productionInputs ProductionInput[]
 
   createdAt DateTime @default(now())
 
+  @@index([unitId])
   @@index([receiptId])
+  @@index([rawMaterialId])
   @@index([productId])
-  @@index([rawMaterialName])
   @@index([lotNo])
 }
 
@@ -950,6 +1153,30 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---- lookups/unit.prisma ----
+model Unit {
+  id String @id @default(cuid())
+
+  code   String @unique
+  name   String @unique
+  symbol String?
+
+  isActive Boolean @default(true)
+
+  rawMaterialPriceRecords RawMaterialPriceRecord[] @relation("RawMaterialPriceRecordUnit")
+  purchaseRequestItems    PurchaseRequestItem[]    @relation("PurchaseRequestItemUnit")
+  purchaseOrderItems      PurchaseOrderItem[]      @relation("PurchaseOrderItemUnit")
+  rawMaterialReceiptItems RawMaterialReceiptItem[] @relation("RawMaterialReceiptItemUnit")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("units")
+}
+
 // ---- lookups/bloodType.prisma ----
 model BloodType {
   id          String @id @default(cuid()) // Kan grubu benzersiz id'si
@@ -981,6 +1208,8 @@ model City {
 
   employees     Employee[] // Bu şehirde kayıtlı çalışanlar
 
+  suppliers     Supplier[]
+
   @@index([countryId])
 
   @@map("cities")
@@ -995,6 +1224,8 @@ model Country {
 
   cities     City[]
   subRegions SubRegion[]
+
+  suppliers Supplier[]
 
   @@index([value])
   @@map("countries")
@@ -1014,6 +1245,13 @@ model Currency {
   maintenances         Maintenance[]
   maintenanceMaterials MaintenanceMaterial[]
 
+  rawMaterialPriceRecords RawMaterialPriceRecord[]
+  
+  purchaseRequestItems PurchaseRequestItem[] @relation("PurchaseRequestItemCurrency")
+
+  purchaseOrders     PurchaseOrder[]     @relation("PurchaseOrderCurrency")
+  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItemCurrency")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1029,6 +1267,8 @@ model District {
   city        City @relation(fields: [cityId], references: [id], onDelete: Restrict) // Bağlı olduğu şehir
 
   employees   Employee[] // Bu ilçede kayıtlı çalışanlar
+
+  suppliers   Supplier[]
 
   @@index([cityId])
 
@@ -1104,6 +1344,10 @@ model PaymentTerm {
   days            Int? // Gün bilgisi varsa tutulur: 7, 14, 30 vb.
   requiresDay     Boolean @default(false) // Hammadde satınalmada gün girişi gerekiyor mu?
 
+  rawMaterialPriceRecords RawMaterialPriceRecord[]
+
+  purchaseOrders PurchaseOrder[]
+
   isActive        Boolean @default(true)
 
   createdAt       DateTime @default(now())
@@ -1121,6 +1365,8 @@ model PlaceOfUse {
 
   legacyId Int? @unique
   name     String @unique
+
+  purchaseOrders PurchaseOrder[]
 
   isActive Boolean @default(true)
 
@@ -1148,6 +1394,8 @@ model Purchased {
   legacyId Int? @unique
   name     String @unique
 
+  purchaseOrders PurchaseOrder[]
+
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1161,6 +1409,8 @@ model PurchaseReason {
   legacyId Int? @unique
   name     String @unique
 
+  purchaseOrders PurchaseOrder[]
+  
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1215,6 +1465,8 @@ model SupplierPoint {
   value    Int @unique
   label    String?
 
+  purchaseOrders PurchaseOrder[]
+  
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1246,6 +1498,8 @@ model TaxOffice {
 
   city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
 
+  suppliers Supplier[]
+
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1264,6 +1518,9 @@ model TaxRatio {
   value     Decimal @unique @db.Decimal(5, 2)
   name      String
 
+  purchaseOrderItemsTaxRatio         PurchaseOrderItem[] @relation("PurchaseOrderItemTaxRatio")
+  purchaseOrderItemsDifferentVatRatio PurchaseOrderItem[] @relation("PurchaseOrderItemDifferentVatRatio")
+
   isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1276,6 +1533,8 @@ model TransportType {
 
   legacyId Int? @unique
   name     String @unique
+
+  purchaseOrders PurchaseOrder[]
 
   isActive Boolean @default(true)
 
@@ -1491,13 +1750,13 @@ model EquipmentTradeMark {
 model Product {
   id String @id @default(cuid())
 
-  supplierRawMaterials SupplierRawMaterial[]
-
   rawMaterialPriceRecords RawMaterialPriceRecord[]
   rawMaterialPriceRequests RawMaterialPriceRequest[]
 
   purchaseOrderItems PurchaseOrderItem[]
   rawMaterialReceiptItems RawMaterialReceiptItem[]
+
+  purchaseRequestItems PurchaseRequestItem[]
 
   productionJobs    ProductionJob[]    @relation("ProductionJobProduct")
   productionInputs  ProductionInput[]  @relation("ProductionInputProduct")
@@ -1549,11 +1808,18 @@ model Supplier {
 
   address String // Açık adres bilgisi
 
-  country String @default("Turkey") // Ülke adı (Örn: Turkey)
-  city String // Şehir adı (Örn: Kocaeli)
-  district String? // İlçe adı (Örn: Dilovası)
+  countryId Int?
+  country   Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
 
-  taxOffice String? // Vergi dairesi
+  cityId Int?
+  city   City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  districtId Int?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
+
+  taxOfficeId String?
+  taxOffice   TaxOffice? @relation(fields: [taxOfficeId], references: [id], onDelete: SetNull)
+
   taxNumber String? // Vergi numarası
 
   // BELGE / ISO DURUM ALANLARI
@@ -1647,9 +1913,10 @@ model Supplier {
   @@index([isActive])
   @@index([deletedAt])
 
-  @@index([country])
-  @@index([city])
-  @@index([district])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([districtId])
+  @@index([taxOfficeId])
 }
 
 model SupplierCategory {
@@ -1667,19 +1934,19 @@ model SupplierCategory {
 }
 
 model SupplierRawMaterial {
-  id              String @id @default(cuid()) // Tedarikçi-hammadde ilişki kaydı id'si
+  id String @id @default(cuid())
 
-  supplierId      String // Tedarikçi id'si
-  productId       String // Tedarikçinin sağlayabildiği ürün/hammadde id'si
+  supplierId    String
+  rawMaterialId String
 
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade) // İlgili tedarikçi
-  product         Product @relation(fields: [productId], references: [id]) // İlgili ürün/hammadde
+  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
 
-  createdAt       DateTime @default(now()) // Kayıt tarihi
+  createdAt DateTime @default(now())
 
-  @@unique([supplierId, productId])
+  @@unique([supplierId, rawMaterialId])
   @@index([supplierId])
-  @@index([productId])
+  @@index([rawMaterialId])
 }
 
 
@@ -1763,6 +2030,8 @@ model Department {
   users       User[] // Bu departmana bağlı kullanıcı hesapları
   employees   Employee[] // Bu departmana bağlı çalışanlar
 
+  purchaseRequests PurchaseRequest[]
+
   createdAt   DateTime @default(now()) // Oluşturulma tarihi
   updatedAt   DateTime @updatedAt // Son güncellenme tarihi
 
@@ -1771,67 +2040,68 @@ model Department {
 
 // ---- organization/employee.prisma ----
 enum EmployeeStatus {
-  ACTIVE      // Aktif çalışan
-  PASSIVE     // Pasif çalışan
-  RESIGNED    // İstifa ederek ayrılmış çalışan
-  TERMINATED  // İşveren tarafından iş akdi sonlandırılmış çalışan
+  ACTIVE
+  PASSIVE
+  RESIGNED
+  TERMINATED
 }
 
 enum EmployeeType {
-  BLUE_COLLAR   // Mavi yaka çalışan
-  WHITE_COLLAR  // Beyaz yaka / ofis çalışanı
+  BLUE_COLLAR
+  WHITE_COLLAR
 }
 
 model Employee {
-  id                String @id @default(cuid()) // Çalışan benzersiz id'si
+  id String @id @default(cuid())
 
-  employeeCode      String @unique // Sicil / çalışan kodu
-  firstName         String // Çalışanın adı
-  lastName          String // Çalışanın soyadı
+  employeeCode String @unique
+  firstName    String
+  lastName     String
 
-  type              EmployeeType   @default(BLUE_COLLAR) // Çalışan tipi
-  status            EmployeeStatus @default(ACTIVE) // Çalışan durumu
+  type   EmployeeType   @default(BLUE_COLLAR)
+  status EmployeeStatus @default(ACTIVE)
 
-  phone             String? // Telefon numarası
-  email             String? // İş veya kişisel e-posta adresi
+  phone String?
+  email String?
 
-  identityNumber    String? @unique // TC kimlik numarası
-  birthDate         DateTime? // Doğum tarihi
+  identityNumber String?   @unique
+  birthDate      DateTime?
 
-  hireDate          DateTime? // İşe giriş tarihi
-  leaveDate         DateTime? // İşten çıkış tarihi
+  hireDate  DateTime?
+  leaveDate DateTime?
 
-  title             String? // Ünvan / görev
+  title String?
 
-  departmentId      String? // Departman id'si
-  department        Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull) // Bağlı olduğu departman
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
-  userId            String? @unique // Bağlı kullanıcı hesabı id'si
-  user              User? @relation(fields: [userId], references: [id], onDelete: SetNull) // Bağlı kullanıcı hesabı
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  bloodTypeId       String? // Kan grubu id'si
-  bloodType         BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull) // Kan grubu
+  bloodTypeId String?
+  bloodType   BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull)
 
-  locationId        String? // Lokasyon id'si
-  location          Location? @relation(fields: [locationId], references: [id], onDelete: SetNull) // Lokasyon
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
-  cityId            Int? // Şehir id'si
-  city              City? @relation(fields: [cityId], references: [id], onDelete: SetNull) // Şehir
+  cityId Int?
+  city   City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
 
-  districtId        Int? // İlçe id'si
-  district          District? @relation(fields: [districtId], references: [id], onDelete: SetNull) // İlçe
+  districtId Int?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
 
-  address           String? // Açık adres
+  address String?
 
-  monthlySalary     Decimal? @db.Decimal(12, 2) // Bakım/personel maliyet hesabında kullanılacak aylık maaş
-  salaryCurrency    String?  @default("TRY") // Maaş para birimi
+  monthlySalary  Decimal? @db.Decimal(12, 2)
+  salaryCurrency String?  @default("TRY")
 
-  note              String? // Açıklama / not
+  note String?
 
-  maintenanceWorks MaintenanceWorker[]
+  maintenanceWorks     MaintenanceWorker[]
+  requestedMaintenances Maintenance[] @relation("MaintenanceRequestedByEmployee")
 
-  createdAt         DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt         DateTime @updatedAt // Son güncellenme tarihi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([employeeCode])
   @@index([firstName])

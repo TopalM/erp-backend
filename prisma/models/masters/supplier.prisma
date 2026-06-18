@@ -41,11 +41,18 @@ model Supplier {
 
   address String // Açık adres bilgisi
 
-  country String @default("Turkey") // Ülke adı (Örn: Turkey)
-  city String // Şehir adı (Örn: Kocaeli)
-  district String? // İlçe adı (Örn: Dilovası)
+  countryId Int?
+  country   Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
 
-  taxOffice String? // Vergi dairesi
+  cityId Int?
+  city   City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  districtId Int?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
+
+  taxOfficeId String?
+  taxOffice   TaxOffice? @relation(fields: [taxOfficeId], references: [id], onDelete: SetNull)
+
   taxNumber String? // Vergi numarası
 
   // BELGE / ISO DURUM ALANLARI
@@ -139,9 +146,10 @@ model Supplier {
   @@index([isActive])
   @@index([deletedAt])
 
-  @@index([country])
-  @@index([city])
-  @@index([district])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([districtId])
+  @@index([taxOfficeId])
 }
 
 model SupplierCategory {
@@ -159,19 +167,19 @@ model SupplierCategory {
 }
 
 model SupplierRawMaterial {
-  id              String @id @default(cuid()) // Tedarikçi-hammadde ilişki kaydı id'si
+  id String @id @default(cuid())
 
-  supplierId      String // Tedarikçi id'si
-  productId       String // Tedarikçinin sağlayabildiği ürün/hammadde id'si
+  supplierId    String
+  rawMaterialId String
 
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade) // İlgili tedarikçi
-  product         Product @relation(fields: [productId], references: [id]) // İlgili ürün/hammadde
+  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
 
-  createdAt       DateTime @default(now()) // Kayıt tarihi
+  createdAt DateTime @default(now())
 
-  @@unique([supplierId, productId])
+  @@unique([supplierId, rawMaterialId])
   @@index([supplierId])
-  @@index([productId])
+  @@index([rawMaterialId])
 }
 
 

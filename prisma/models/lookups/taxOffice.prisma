@@ -9,6 +9,8 @@ model TaxOffice {
 
   city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
 
+  suppliers Supplier[]
+
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())

@@ -1,8 +1,3 @@
-enum PriceRequestChannel {
-  MAIL
-  WHATSAPP
-}
-
 enum PriceRequestSupplierStatus {
   DRAFT
   READY
@@ -14,9 +9,7 @@ enum PriceRequestSupplierStatus {
 
 enum PriceRecordSource {
   MANUAL
-  WHATSAPP
   MAIL
-  PHONE
 }
 
 enum PurchaseMessageLanguage {
@@ -24,67 +17,95 @@ enum PurchaseMessageLanguage {
   EN
 }
 
-enum PurchaseSendMode {
-  manual
-  draft
-  backend
+model RawMaterial {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  supplierRawMaterials SupplierRawMaterial[]
+
+  receiptItems RawMaterialReceiptItem[]
+
+  priceRecords  RawMaterialPriceRecord[]
+  priceRequests RawMaterialPriceRequest[]
+
+  purchaseOrderItems PurchaseOrderItem[]
+
+  purchaseRequestItems PurchaseRequestItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([isActive])
 }
 
 model RawMaterialPriceRecord {
   id String @id @default(cuid())
 
   supplierId String
-  productId  String?
+
+  rawMaterialId String
+  productId     String?
 
   priceRequestSupplierId String?
-
-  rawMaterialName String
 
   price         Decimal  @db.Decimal(18, 4)
   previousPrice Decimal? @db.Decimal(18, 4)
 
-  currency String @default("USD")
-  unit     String @default("ton")
+  currencyId String?
+  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
+
+  unitId String?
+  unit   Unit? @relation("RawMaterialPriceRecordUnit", fields: [unitId], references: [id], onDelete: SetNull)
 
   priceDate  DateTime  @db.Date
   validUntil DateTime? @db.Date
 
   source PriceRecordSource @default(MANUAL)
 
-  paymentTerm String?
+  paymentTermId String?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id], onDelete: SetNull)
+
   deliveryDay Int?
 
   note String?
 
-  supplier Supplier @relation(fields: [supplierId], references: [id])
-  product  Product? @relation(fields: [productId], references: [id])
+  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id])
+  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id], onDelete: SetNull)
 
   purchaseOrderItems PurchaseOrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([unitId])
   @@index([supplierId])
+  @@index([rawMaterialId])
   @@index([productId])
   @@index([priceRequestSupplierId])
-  @@index([rawMaterialName])
+  @@index([currencyId])
   @@index([priceDate])
   @@index([validUntil])
   @@index([source])
-  @@index([paymentTerm])
+  @@index([paymentTermId])
   @@index([deliveryDay])
 }
 
 model RawMaterialPriceRequestDraft {
   id String @id @default(cuid())
 
-  channel PriceRequestChannel
-
   title   String
   subject String?
   message String
+
+  language PurchaseMessageLanguage @default(EN)
 
   isActive Boolean @default(true)
 
@@ -93,7 +114,7 @@ model RawMaterialPriceRequestDraft {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([channel])
+  @@index([language])
   @@index([isActive])
 }
 
@@ -102,26 +123,25 @@ model RawMaterialPriceRequest {
 
   draftId String?
 
-  rawMaterialName String?
-  productId        String?
-
-  channel PriceRequestChannel
+  rawMaterialId String?
+  productId     String?
 
   subject String?
   message String
 
   requestedAt DateTime @default(now())
 
-  draft   RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id])
-  product Product? @relation(fields: [productId], references: [id])
+  draft       RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  rawMaterial RawMaterial?                  @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
+  product     Product?                      @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   suppliers RawMaterialPriceRequestSupplier[]
 
   createdAt DateTime @default(now())
 
   @@index([draftId])
+  @@index([rawMaterialId])
   @@index([productId])
-  @@index([rawMaterialName])
   @@index([requestedAt])
 }
 
@@ -132,8 +152,7 @@ model RawMaterialPriceRequestSupplier {
   supplierId String
   contactId  String?
 
-  channel PriceRequestChannel
-  status  PriceRequestSupplierStatus @default(DRAFT)
+  status PriceRequestSupplierStatus @default(DRAFT)
 
   token          String?   @unique
   tokenExpiresAt DateTime?
@@ -143,7 +162,7 @@ model RawMaterialPriceRequestSupplier {
   error  String?
 
   request  RawMaterialPriceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  supplier Supplier                @relation(fields: [supplierId], references: [id])
+  supplier Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
   priceRecords RawMaterialPriceRecord[]
 
@@ -167,8 +186,6 @@ model RawMaterialPurchaseSettings {
 
   messageLanguage PurchaseMessageLanguage @default(EN)
 
-  sendMode PurchaseSendMode @default(manual)
-
   defaultCountryCode String @default("90")
 
   mailSubjectTr String?
@@ -177,8 +194,8 @@ model RawMaterialPurchaseSettings {
   messageTr String
   messageEn String
 
-  addProductName Boolean @default(true)
-  addPaymentTerm Boolean @default(true)
+  addProductName  Boolean @default(true)
+  addPaymentTerm  Boolean @default(true)
   addDeliveryTerm Boolean @default(true)
 
   createdAt DateTime @default(now())

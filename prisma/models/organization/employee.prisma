@@ -1,65 +1,66 @@
 enum EmployeeStatus {
-  ACTIVE      // Aktif çalışan
-  PASSIVE     // Pasif çalışan
-  RESIGNED    // İstifa ederek ayrılmış çalışan
-  TERMINATED  // İşveren tarafından iş akdi sonlandırılmış çalışan
+  ACTIVE
+  PASSIVE
+  RESIGNED
+  TERMINATED
 }
 
 enum EmployeeType {
-  BLUE_COLLAR   // Mavi yaka çalışan
-  WHITE_COLLAR  // Beyaz yaka / ofis çalışanı
+  BLUE_COLLAR
+  WHITE_COLLAR
 }
 
 model Employee {
-  id                String @id @default(cuid()) // Çalışan benzersiz id'si
+  id String @id @default(cuid())
 
-  employeeCode      String @unique // Sicil / çalışan kodu
-  firstName         String // Çalışanın adı
-  lastName          String // Çalışanın soyadı
+  employeeCode String @unique
+  firstName    String
+  lastName     String
 
-  type              EmployeeType   @default(BLUE_COLLAR) // Çalışan tipi
-  status            EmployeeStatus @default(ACTIVE) // Çalışan durumu
+  type   EmployeeType   @default(BLUE_COLLAR)
+  status EmployeeStatus @default(ACTIVE)
 
-  phone             String? // Telefon numarası
-  email             String? // İş veya kişisel e-posta adresi
+  phone String?
+  email String?
 
-  identityNumber    String? @unique // TC kimlik numarası
-  birthDate         DateTime? // Doğum tarihi
+  identityNumber String?   @unique
+  birthDate      DateTime?
 
-  hireDate          DateTime? // İşe giriş tarihi
-  leaveDate         DateTime? // İşten çıkış tarihi
+  hireDate  DateTime?
+  leaveDate DateTime?
 
-  title             String? // Ünvan / görev
+  title String?
 
-  departmentId      String? // Departman id'si
-  department        Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull) // Bağlı olduğu departman
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
-  userId            String? @unique // Bağlı kullanıcı hesabı id'si
-  user              User? @relation(fields: [userId], references: [id], onDelete: SetNull) // Bağlı kullanıcı hesabı
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  bloodTypeId       String? // Kan grubu id'si
-  bloodType         BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull) // Kan grubu
+  bloodTypeId String?
+  bloodType   BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull)
 
-  locationId        String? // Lokasyon id'si
-  location          Location? @relation(fields: [locationId], references: [id], onDelete: SetNull) // Lokasyon
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
-  cityId            Int? // Şehir id'si
-  city              City? @relation(fields: [cityId], references: [id], onDelete: SetNull) // Şehir
+  cityId Int?
+  city   City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
 
-  districtId        Int? // İlçe id'si
-  district          District? @relation(fields: [districtId], references: [id], onDelete: SetNull) // İlçe
+  districtId Int?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
 
-  address           String? // Açık adres
+  address String?
 
-  monthlySalary     Decimal? @db.Decimal(12, 2) // Bakım/personel maliyet hesabında kullanılacak aylık maaş
-  salaryCurrency    String?  @default("TRY") // Maaş para birimi
+  monthlySalary  Decimal? @db.Decimal(12, 2)
+  salaryCurrency String?  @default("TRY")
 
-  note              String? // Açıklama / not
+  note String?
 
-  maintenanceWorks MaintenanceWorker[]
+  maintenanceWorks     MaintenanceWorker[]
+  requestedMaintenances Maintenance[] @relation("MaintenanceRequestedByEmployee")
 
-  createdAt         DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt         DateTime @updatedAt // Son güncellenme tarihi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([employeeCode])
   @@index([firstName])

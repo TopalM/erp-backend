@@ -16,6 +16,10 @@ model PaymentTerm {
   days            Int? // Gün bilgisi varsa tutulur: 7, 14, 30 vb.
   requiresDay     Boolean @default(false) // Hammadde satınalmada gün girişi gerekiyor mu?
 
+  rawMaterialPriceRecords RawMaterialPriceRecord[]
+
+  purchaseOrders PurchaseOrder[]
+
   isActive        Boolean @default(true)
 
   createdAt       DateTime @default(now())

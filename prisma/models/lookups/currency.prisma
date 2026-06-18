@@ -11,6 +11,13 @@ model Currency {
   maintenances         Maintenance[]
   maintenanceMaterials MaintenanceMaterial[]
 
+  rawMaterialPriceRecords RawMaterialPriceRecord[]
+  
+  purchaseRequestItems PurchaseRequestItem[] @relation("PurchaseRequestItemCurrency")
+
+  purchaseOrders     PurchaseOrder[]     @relation("PurchaseOrderCurrency")
+  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItemCurrency")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

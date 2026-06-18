@@ -1,6 +1,19 @@
 import { prisma } from "../../../database/prisma.client.js";
 
-// Parametreden gelen tedarikçi id değerini kontrol eder.
+const supplierInclude = {
+  country: true,
+  city: true,
+  district: true,
+  taxOffice: true,
+  categories: true,
+  rawMaterials: true,
+  documents: {
+    include: {
+      documentType: true,
+    },
+  },
+};
+
 function toSupplierId(id, message = "Geçersiz tedarikçi id.") {
   if (!id || typeof id !== "string") {
     const error = new Error(message);
@@ -11,8 +24,6 @@ function toSupplierId(id, message = "Geçersiz tedarikçi id.") {
   return id;
 }
 
-// Zorunlu metin alanlarını kontrol eder.
-// Boş gelirse kontrollü 400 hata üretir.
 function requireText(value, message) {
   const text = value?.toString().trim();
 
@@ -25,11 +36,6 @@ function requireText(value, message) {
   return text;
 }
 
-// Telefon numarasını +90 formatına çevirir.
-// Örnek:
-// 5397777777    => +905397777777
-// 05397777777   => +905397777777
-// +905397777777 => +905397777777
 function normalizePhone(value) {
   if (!value) return null;
 
@@ -42,8 +48,6 @@ function normalizePhone(value) {
   return `+90${digits}`;
 }
 
-// Gelen kategori değerini güvenli hale getirir.
-// Geçersiz veya boş gelirse MATERIAL kabul edilir.
 function normalizeSupplierCategoryType(value) {
   if (["RAW_MATERIAL", "PACKAGING", "MATERIAL", "TRADE_PRODUCT", "SERVICE", "TRANSPORT"].includes(value)) {
     return value;
@@ -52,7 +56,6 @@ function normalizeSupplierCategoryType(value) {
   return "MATERIAL";
 }
 
-// Tedarikçi belge kaydını client formatına dönüştürür.
 function mapDocumentToClient(document) {
   return {
     ...document,
@@ -60,8 +63,14 @@ function mapDocumentToClient(document) {
   };
 }
 
-// Prisma Supplier kaydını frontend'in beklediği legacy alanlarla uyumlu hale getirir.
-// Böylece yeni normalize model kullanılırken eski client alan adları da bozulmaz.
+function toNullableInt(value) {
+  if (value === undefined || value === null || value === "") return null;
+
+  const numberValue = Number(value);
+
+  return Number.isNaN(numberValue) ? null : numberValue;
+}
+
 function toClientSupplier(row) {
   if (!row) return row;
 
@@ -79,6 +88,11 @@ function toClientSupplier(row) {
     mobilePhoneNumber: row.contactPhone,
     supplierResponsiblePerson: row.contactName,
 
+    country: row.country?.value || null,
+    city: row.city?.value || null,
+    district: row.district?.value || null,
+    taxOffice: row.taxOffice?.value || null,
+
     categoryType: primaryCategory,
     categoryTypes: categories.map((category) => category.type),
 
@@ -94,8 +108,6 @@ function toClientSupplier(row) {
   };
 }
 
-// Tedarikçi listesini getirir.
-// Purchasing ekranı MATERIAL,SERVICE filtresiyle çağırır.
 export async function listSuppliersService(query = {}) {
   const categoryTypes = query.categoryTypes ? String(query.categoryTypes).split(",").filter(Boolean) : [];
 
@@ -112,15 +124,7 @@ export async function listSuppliersService(query = {}) {
         },
       }),
     },
-    include: {
-      categories: true,
-      rawMaterials: true,
-      documents: {
-        include: {
-          documentType: true,
-        },
-      },
-    },
+    include: supplierInclude,
     orderBy: {
       name: "asc",
     },
@@ -129,9 +133,6 @@ export async function listSuppliersService(query = {}) {
   return rows.map(toClientSupplier);
 }
 
-// Yeni tedarikçi oluşturur.
-// country alanı Prisma modelinde default("Turkey") olduğu için burada ayrıca gönderilmez.
-// city ve district string olarak kaydedilir: Örn. city: "Kocaeli", district: "Dilovası".
 export async function createSupplierService(payload, userId = null) {
   const phone = normalizePhone(payload.phoneNumber);
   const contactPhone = normalizePhone(payload.mobilePhoneNumber);
@@ -145,19 +146,27 @@ export async function createSupplierService(payload, userId = null) {
 
       address: requireText(payload.address, "Adres zorunludur."),
 
-      // Modelde city zorunlu String olduğu için mutlaka gönderilmeli.
-      // Örn: "İstanbul", "Kocaeli", "Ankara"
-      city: requireText(payload.city, "Şehir zorunludur."),
+      countryId: toNullableInt(payload.countryId),
+      cityId: toNullableInt(payload.cityId),
+      districtId: toNullableInt(payload.districtId),
+      taxOfficeId: payload.taxOfficeId || null,
 
-      // district opsiyonel.
-      district: payload.district?.toString().trim() || null,
-
-      taxOffice: payload.taxOffice || null,
       taxNumber: payload.taxNumber || null,
 
       contactName: requireText(payload.supplierResponsiblePerson, "Firma sorumlusu zorunludur."),
       contactPhone,
       contactEmail: (payload.contactEmail || payload.email || "").toLowerCase() || null,
+
+      isDocumentNone: Boolean(payload.isDocumentNone),
+      documentRequestEnabled: Boolean(payload.documentRequestEnabled),
+
+      iso9001: Boolean(payload.iso9001),
+      iso14001: Boolean(payload.iso14001),
+      iso45001: Boolean(payload.iso45001),
+      iso50001: Boolean(payload.iso50001),
+
+      notes: payload.notes || null,
+      risk: payload.risk || null,
 
       categories: {
         create: [{ type: categoryType }],
@@ -165,23 +174,12 @@ export async function createSupplierService(payload, userId = null) {
 
       createdById: userId,
     },
-    include: {
-      categories: true,
-      rawMaterials: true,
-      documents: {
-        include: {
-          documentType: true,
-        },
-      },
-    },
+    include: supplierInclude,
   });
 
   return toClientSupplier(row);
 }
 
-// Partial update datası üretir.
-// Gönderilmeyen alanlar güncellenmez.
-// country alanı modelde default olduğu için update sırasında da elle değiştirilmez.
 function buildSupplierUpdateData(payload, userId = null) {
   const data = {
     ...(userId && { updatedById: userId }),
@@ -189,14 +187,15 @@ function buildSupplierUpdateData(payload, userId = null) {
 
   if (payload.companyName !== undefined) data.name = payload.companyName;
   if (payload.phoneNumber !== undefined) data.phone = normalizePhone(payload.phoneNumber);
-  if (payload.email !== undefined) data.email = payload.email;
+  if (payload.email !== undefined) data.email = payload.email.toLowerCase();
 
   if (payload.address !== undefined) data.address = payload.address;
 
-  if (payload.city !== undefined) data.city = payload.city;
-  if (payload.district !== undefined) data.district = payload.district || null;
+  if (payload.countryId !== undefined) data.countryId = toNullableInt(payload.countryId);
+  if (payload.cityId !== undefined) data.cityId = toNullableInt(payload.cityId);
+  if (payload.districtId !== undefined) data.districtId = toNullableInt(payload.districtId);
+  if (payload.taxOfficeId !== undefined) data.taxOfficeId = payload.taxOfficeId || null;
 
-  if (payload.taxOffice !== undefined) data.taxOffice = payload.taxOffice || null;
   if (payload.taxNumber !== undefined) data.taxNumber = payload.taxNumber || null;
 
   if (payload.supplierResponsiblePerson !== undefined) {
@@ -208,7 +207,7 @@ function buildSupplierUpdateData(payload, userId = null) {
   }
 
   if (payload.contactEmail !== undefined || payload.email !== undefined) {
-    data.contactEmail = payload.contactEmail || payload.email || null;
+    data.contactEmail = (payload.contactEmail || payload.email || "").toLowerCase() || null;
   }
 
   if (payload.isDocumentNone !== undefined) data.isDocumentNone = Boolean(payload.isDocumentNone);
@@ -219,11 +218,12 @@ function buildSupplierUpdateData(payload, userId = null) {
   if (payload.iso45001 !== undefined) data.iso45001 = Boolean(payload.iso45001);
   if (payload.iso50001 !== undefined) data.iso50001 = Boolean(payload.iso50001);
 
+  if (payload.notes !== undefined) data.notes = payload.notes || null;
+  if (payload.risk !== undefined) data.risk = payload.risk || null;
+
   return data;
 }
 
-// Mevcut tedarikçiyi günceller.
-// Kategori değişirse yeni kategori ilişkisi yoksa eklenir.
 export async function updateSupplierService(id, payload, userId = null) {
   const supplierId = toSupplierId(id);
 
@@ -263,23 +263,13 @@ export async function updateSupplierService(id, payload, userId = null) {
         id: supplierId,
       },
       data: buildSupplierUpdateData(payload, userId),
-      include: {
-        categories: true,
-        rawMaterials: true,
-        documents: {
-          include: {
-            documentType: true,
-          },
-        },
-      },
+      include: supplierInclude,
     });
 
     return toClientSupplier(row);
   });
 }
 
-// Tedarikçiyi hard delete yapmaz.
-// deletedAt ve deletedById alanlarını doldurarak soft delete uygular.
 export async function deleteSupplierService(id, userId = null) {
   const supplierId = toSupplierId(id);
 
@@ -304,15 +294,7 @@ export async function deleteSupplierService(id, userId = null) {
       deletedAt: new Date(),
       ...(userId && { deletedById: userId }),
     },
-    include: {
-      categories: true,
-      rawMaterials: true,
-      documents: {
-        include: {
-          documentType: true,
-        },
-      },
-    },
+    include: supplierInclude,
   });
 
   return toClientSupplier(row);

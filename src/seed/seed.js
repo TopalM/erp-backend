@@ -8,6 +8,7 @@ import { Departments } from "./data/Departments.js";
 import { DEFAULT_PERMISSIONS } from "./data/permissions.js";
 import { ProductionReaktor } from "./data/ProductionReaktor.js";
 
+import { units } from "./data/Lookups/Units.js";
 import { BloodType } from "./data/Lookups/BloodType.js";
 import { Cities } from "./data/Lookups/Cities.js";
 import { Countries } from "./data/Lookups/Countries.js";
@@ -134,6 +135,16 @@ const seedLocationLookups = async () => {
         cityId: taxOffice.cityId,
         isActive: true,
       },
+    });
+  }
+
+  for (const unit of units) {
+    await prisma.unit.upsert({
+      where: { code: unit.code },
+
+      update: unit,
+
+      create: unit,
     });
   }
 

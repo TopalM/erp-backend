@@ -5,6 +5,9 @@ model TaxRatio {
   value     Decimal @unique @db.Decimal(5, 2)
   name      String
 
+  purchaseOrderItemsTaxRatio         PurchaseOrderItem[] @relation("PurchaseOrderItemTaxRatio")
+  purchaseOrderItemsDifferentVatRatio PurchaseOrderItem[] @relation("PurchaseOrderItemDifferentVatRatio")
+
   isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())

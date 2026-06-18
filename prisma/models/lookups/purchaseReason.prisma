@@ -4,6 +4,8 @@ model PurchaseReason {
   legacyId Int? @unique
   name     String @unique
 
+  purchaseOrders PurchaseOrder[]
+  
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())

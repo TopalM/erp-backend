@@ -5,6 +5,8 @@ model SupplierPoint {
   value    Int @unique
   label    String?
 
+  purchaseOrders PurchaseOrder[]
+  
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
