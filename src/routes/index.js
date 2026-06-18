@@ -32,6 +32,7 @@ import endexRoutes from "../modules/business/maintenance/endex/endex.routes.js";
 import rawMaterialPurchaseRoutes from "../modules/business/procurement/rawMaterial/rawMaterialPurchase.route.js";
 
 import productionRoutes from "../modules/business/production/production.route.js";
+import purchaseRoute from "../modules/business/procurement/purchase/purchase.route.js";
 
 const router = express.Router();
 
@@ -54,6 +55,7 @@ router.use("/auth-event-logs", authEventLogRoutes);
 
 router.use("/suppliers", supplierRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/purchases", purchaseRoute);
 
 router.use("/tradeMarks", tradeMarkRoutes);
 router.use("/mainMachines", mainMachineRoutes);
