@@ -3,8 +3,8 @@ import os from "os";
 
 import { prisma } from "../../database/prisma.client.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../../middlewares/role.middleware.js";
-import { ROLES } from "../../constants/roles.js";
+import { authorizePermissions } from "../../middlewares/authorizePermissions.js";
+import { PERMISSIONS } from "../../constants/permissions.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import { env } from "../../config/env.js";
@@ -14,7 +14,7 @@ const router = express.Router();
 router.get(
   "/health",
   authMiddleware,
-  authorizeRoles(ROLES.ADMIN),
+  authorizePermissions(PERMISSIONS.SYSTEM_HEALTH_READ),
   asyncHandler(async (req, res) => {
     await prisma.$queryRaw`SELECT 1`;
 
