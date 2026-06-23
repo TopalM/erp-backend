@@ -1,22 +1,18 @@
 model SubRegion {
-  id          String @id @default(cuid()) // Alt bölge benzersiz id'si
+  id          Int @id
 
-  legacyId    Int? @unique // Eski sistemden gelen id
+  countryId   Int
 
-  countryId   Int // Bağlı olduğu ülke id'si
+  country     Country @relation(fields: [countryId], references: [id])
 
-  country     Country @relation(fields: [countryId], references: [id]) // Bağlı olduğu ülke
+  name        String
 
-  name        String // Alt bölge adı
+  isActive    Boolean @default(true)
 
-  isActive    Boolean @default(true) // Kullanım durumu
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdAt   DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
-
-  @@unique([countryId, name]) // Aynı ülke içinde alt bölge adı tekil olmalıdır
-
+  @@unique([countryId, name])
   @@index([countryId])
-
-  @@map("sub_regions")
+  @@map("Lookup_SubRegion")
 }

@@ -1,67 +1,68 @@
 enum AuditModule {
-  AUTH                            // Kimlik doğrulama işlemleri
-  USER                            // Kullanıcı işlemleri
-  ROLE                            // Rol işlemleri
-  PERMISSION                      // Yetki işlemleri
-  SUPPLIER                        // Tedarikçi işlemleri
-  PRODUCT                         // Ürün işlemleri
-  PURCHASE                        // Satınalma işlemleri
-  RAW_MATERIAL_RECEIPT            // Hammadde kabul işlemleri
-  QUALITY                         // Kalite işlemleri
-  MAINTENANCE                     // Bakım işlemleri
-  PRODUCTION                      // Üretim işlemleri
-  STORAGE                         // Dosya depolama işlemleri
-  SYSTEM                          // Sistem işlemleri
+  AUTH
+  USER
+  ROLE
+  PERMISSION
+  SUPPLIER
+  PRODUCT
+  PURCHASE
+  RAW_MATERIAL_RECEIPT
+  QUALITY
+  MAINTENANCE
+  PRODUCTION
+  STORAGE
+  SYSTEM
 }
 
 enum AuditAction {
-  CREATE                          // Yeni kayıt oluşturma
-  UPDATE                          // Kayıt güncelleme
-  DELETE                          // Kayıt silme
-  RESTORE                         // Silinen kaydı geri alma
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
 
-  LOGIN                           // Sisteme giriş
-  LOGOUT                          // Sistemden çıkış
+  LOGIN
+  LOGOUT
 
-  APPROVE                         // Onay verme
-  REJECT                          // Reddetme
+  APPROVE
+  REJECT
 
-  UPLOAD                          // Dosya yükleme
-  DOWNLOAD                        // Dosya indirme
+  UPLOAD
+  DOWNLOAD
 
-  USER_ACTIVATED                  // Kullanıcı aktif edildi
-  USER_DEACTIVATED                // Kullanıcı pasif edildi
-  USER_ROLE_UPDATED               // Kullanıcı rolü güncellendi
-  USER_DEPARTMENT_UPDATED         // Kullanıcı departmanı güncellendi
-  USER_FORCE_LOGOUT               // Kullanıcının oturumları sonlandırıldı
+  USER_ACTIVATED
+  USER_DEACTIVATED
+  USER_ROLE_UPDATED
+  USER_DEPARTMENT_UPDATED
+  USER_FORCE_LOGOUT
 
-  ERROR                           // Hata oluşması
+  ERROR
 }
 
 model AuditLog {
-  id              String @id @default(cuid()) // Audit log benzersiz id'si
+  id              String @id @default(cuid())
 
-  actorUserId     String? // İşlemi yapan kullanıcı id'si
-  actorEmail      String? // İşlemi yapan kullanıcı e-postası
+  actorUserId     String?
+  actorEmail      String?
 
-  entityType      AuditModule // İşlem yapılan modül
-  entityId        String? // İşlem yapılan kayıt id'si
+  entityType      AuditModule
+  entityId        String?
 
-  action          AuditAction // Yapılan işlem
+  action          AuditAction
 
-  message         String? // İşlem açıklaması
+  message         String?
 
-  oldValue        Json? // Değişiklik öncesi veri
-  newValue        Json? // Değişiklik sonrası veri
+  oldValue        Json?
+  newValue        Json?
 
-  ipAddress       String? // İşlemin yapıldığı IP adresi
-  userAgent       String? // Tarayıcı / cihaz bilgisi
+  ipAddress       String?
+  userAgent       String?
 
-  createdAt       DateTime @default(now()) // Log oluşturulma tarihi
+  createdAt       DateTime @default(now())
 
   @@index([actorUserId])
   @@index([entityType])
   @@index([entityId])
   @@index([action])
   @@index([createdAt])
+  @@map("AuditLog")
 }

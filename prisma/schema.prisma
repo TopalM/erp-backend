@@ -1,1148 +1,5 @@
 // AUTO-GENERATED FILE
-
 // DO NOT EDIT
-
-// ---- auth/user.prisma ----
-model User {
-  id String @id @default(cuid()) // Kullanıcı benzersiz id'si
-
-  firstName String // Kullanıcının adı
-  lastName  String // Kullanıcının soyadı
-
-  email        String @unique // Kullanıcının giriş yaptığı benzersiz e-posta adresi
-  passwordHash String // Hashlenmiş kullanıcı parolası
-
-  isActive            Boolean   @default(true) // Kullanıcı hesabı aktif mi?
-  tokenVersion        Int       @default(0) // JWT tokenlarını geçersiz kılmak için kullanılan versiyon numarası
-  failedLoginAttempts Int       @default(0) // Başarısız giriş deneme sayısı
-  lockedUntil         DateTime? // Hesap kilitliyse kilidin sona ereceği tarih
-  lastLoginAt         DateTime? // Son başarılı giriş tarihi
-
-  departmentId String? // Kullanıcının bağlı olduğu departman id'si
-  department   Department? @relation(fields: [departmentId], references: [id]) // Kullanıcının bağlı olduğu departman
-
-  roleId String // Kullanıcının rol id'si
-  role   Role @relation(fields: [roleId], references: [id]) // Kullanıcının rolü
-
-  userPermissions UserPermission[] // Kullanıcıya özel atanmış ek yetkiler
-
-  createdSuppliers Supplier[] @relation("SupplierCreatedBy") // Kullanıcının oluşturduğu tedarikçi kayıtları
-  updatedSuppliers Supplier[] @relation("SupplierUpdatedBy") // Kullanıcının güncellediği tedarikçi kayıtları
-  deletedSuppliers Supplier[] @relation("SupplierDeletedBy") // Kullanıcının sildiği/pasife aldığı tedarikçi kayıtları
-
-  supplierEvaluations SupplierEvaluation[] // Kullanıcının yaptığı tedarikçi değerlendirme kayıtları
-
-  documentsUploaded Document[] @relation("UserUploadedDocuments") // Kullanıcının merkezi doküman sistemine yüklediği dosyalar
-
-  approvalsRequested Approval[] @relation("ApprovalRequestedBy") // Kullanıcının onaya gönderdiği kayıtlar
-  approvalsToDecide  Approval[] @relation("ApprovalApprover") // Kullanıcının onaylayacağı / reddedeceği kayıtlar
-
-  assignments        Assignment[] @relation("AssignmentUser") // Kullanıcının sorumlu / ilgili olduğu kayıtlar
-  assignmentsCreated Assignment[] @relation("AssignmentCreatedBy") // Kullanıcının oluşturduğu sorumluluk atamaları
-
-  savedMaintenances   Maintenance[] @relation("MaintenanceSavedBy") // Kullanıcının kaydettiği bakım kayıtları
-  revisedMaintenances Maintenance[] @relation("MaintenanceRevisedBy") // Kullanıcının revize ettiği bakım kayıtları
-
-  purchaseRequestsRequested PurchaseRequest[] @relation("PurchaseRequestRequestedBy")
-
-  createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
-
-  authEventLogs AuthEventLog[] // Kullanıcının giriş, çıkış, şifre değişikliği vb. güvenlik kayıtları
-
-  passwordResetToken   String?   @unique // Şifre sıfırlama işlemi için oluşturulan benzersiz token
-  passwordResetExpires DateTime? // Şifre sıfırlama tokenının geçerlilik süresi
-
-  phone           String? // Kullanıcının telefon numarası
-  profilePhotoUrl String? // Profil fotoğrafının storage path bilgisi
-
-  preferredTheme String? @default("light") // Kullanıcının tercih ettiği tema
-
-  emailVerifiedAt          DateTime? // E-posta adresinin doğrulandığı tarih
-  emailVerificationToken   String?   @unique // E-posta doğrulama tokenı
-  emailVerificationExpires DateTime? // E-posta doğrulama tokenının geçerlilik süresi
-
-  employee Employee? // Kullanıcıya bağlı çalışan kaydı
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- auth/permission.prisma ----
-enum PermissionEffect {
-  ALLOW // Kullanıcıya bu yetki açıkça verildi
-  DENY  // Kullanıcı için bu yetki açıkça engellendi
-}
-
-model Permission {
-  id String @id @default(cuid()) // Yetki benzersiz id'si
-
-  code String @unique // Sistem içinde kullanılan benzersiz yetki kodu: supplier.read, user.create vb.
-  name String // Kullanıcıya gösterilecek yetki adı
-
-  description String? // Yetkinin açıklaması
-
-  userPermissions UserPermission[] // Bu yetkiye sahip kullanıcı-yetki ilişkileri
-
-  createdAt DateTime @default(now()) // Yetki oluşturulma tarihi
-  updatedAt DateTime @updatedAt // Yetki son güncellenme tarihi
-}
-
-model UserPermission {
-  id String @id @default(cuid()) // Kullanıcı-yetki ilişki id'si
-
-  userId String // Yetki verilen kullanıcı id'si
-  permissionId String // Verilen yetki id'si
-
-  effect PermissionEffect @default(ALLOW) // Yetki etkisi: ALLOW verilmiş yetki, DENY engellenmiş yetki
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // Yetki verilen kullanıcı
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) // Kullanıcıya verilen yetki
-
-  createdAt DateTime @default(now()) // Yetki atanma tarihi
-  updatedAt DateTime @updatedAt // Yetki ilişkisi son güncellenme tarihi
-
-  @@unique([userId, permissionId])
-  @@index([userId])
-  @@index([permissionId])
-  @@index([effect])
-}
-
-// ---- auth/role.prisma ----
-model Role {
-  id            String @id @default(cuid()) // Rol benzersiz id'si
-
-  name          String @unique // Rol adı: ADMIN, HR, PURCHASING, QUALITY, MAINTENANCE vb.
-  description   String? // Rolün açıklaması ve kullanım amacı
-
-  users         User[] // Bu role atanmış kullanıcılar
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ---- business/maintenance/maintenance.prisma ----
-enum MaintenanceType {
-  FAULT
-  PERIODIC
-}
-
-enum MaintenanceStatus {
-  DRAFT
-  OPEN
-  IN_PROGRESS
-  COMPLETED
-  REJECTED
-  CANCELLED
-}
-
-model Maintenance {
-  id Int @id @default(autoincrement())
-
-  type MaintenanceType
-
-  locationId String?
-  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-
-  mainEquipmentId Int
-  mainEquipment   Equipment @relation("MaintenanceMainEquipment", fields: [mainEquipmentId], references: [id], onDelete: Restrict)
-
-  subEquipmentId Int?
-  subEquipment   Equipment? @relation("MaintenanceSubEquipment", fields: [subEquipmentId], references: [id], onDelete: SetNull)
-
-  supplierId String?
-  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-
-  status MaintenanceStatus @default(OPEN)
-
-  requestedByEmployeeId String?
-  requestedByEmployee   Employee? @relation("MaintenanceRequestedByEmployee", fields: [requestedByEmployeeId], references: [id], onDelete: SetNull)
-
-  savedById String?
-  savedBy   User? @relation("MaintenanceSavedBy", fields: [savedById], references: [id], onDelete: SetNull)
-
-  revisedById String?
-  revisedBy   User? @relation("MaintenanceRevisedBy", fields: [revisedById], references: [id], onDelete: SetNull)
-
-  revisedDate DateTime?
-
-  description          String
-  endOfWorkDescription String?
-
-  faultTypeId String?
-  faultType   FaultType? @relation(fields: [faultTypeId], references: [id], onDelete: SetNull)
-
-  reasonFailureId String?
-  reasonFailure   FailureReason? @relation(fields: [reasonFailureId], references: [id], onDelete: SetNull)
-
-  workStartDateTime DateTime?
-  workEndDateTime   DateTime?
-
-  invoiceDate  DateTime?
-  invoicePrice Decimal? @db.Decimal(18, 2)
-
-  currencyId String?
-  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
-
-  firstPeriodicMaintenanceDate DateTime?
-  annualPlanned                String?
-  whichMaintenance             Int?
-
-  totalPriceWithMaterialAndWorking Decimal? @db.Decimal(18, 2)
-
-  rejectReason String?
-
-  workers   MaintenanceWorker[]
-  materials MaintenanceMaterial[]
-  schedules MaintenanceSchedule[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([type])
-  @@index([locationId])
-  @@index([mainEquipmentId])
-  @@index([subEquipmentId])
-  @@index([supplierId])
-  @@index([requestedByEmployeeId])
-  @@index([savedById])
-  @@index([revisedById])
-  @@index([faultTypeId])
-  @@index([reasonFailureId])
-  @@index([currencyId])
-  @@index([status])
-  @@index([deletedAt])
-  @@map("maintenances")
-}
-
-model MaintenanceWorker {
-  id Int @id @default(autoincrement())
-
-  maintenanceId Int
-  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
-
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-
-  workDescription String?
-  workMinute      Int?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([maintenanceId, employeeId])
-  @@index([maintenanceId])
-  @@index([employeeId])
-  @@map("maintenance_workers")
-}
-
-model MaintenanceMaterial {
-  id Int @id @default(autoincrement())
-
-  maintenanceId Int
-  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
-
-  materialName String
-
-  quantity Decimal? @db.Decimal(18, 4)
-  unit     String?
-
-  unitPrice Decimal? @db.Decimal(18, 4)
-
-  currencyId String?
-  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
-
-  totalPrice Decimal? @db.Decimal(18, 2)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([maintenanceId])
-  @@index([materialName])
-  @@index([currencyId])
-  @@map("maintenance_materials")
-}
-
-model MaintenanceSchedule {
-  id Int @id @default(autoincrement())
-
-  maintenanceId Int
-  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
-
-  plannedDate DateTime
-  actualDate  DateTime?
-
-  status MaintenanceStatus @default(OPEN)
-
-  note String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([maintenanceId])
-  @@index([plannedDate])
-  @@index([actualDate])
-  @@index([status])
-  @@map("maintenance_schedules")
-}
-
-// ---- business/procurement/priceRequest.prisma ----
-enum PriceRequestSupplierStatus {
-  DRAFT
-  READY
-  SENT
-  FAILED
-  RESPONDED
-  EXPIRED
-}
-
-enum PriceRecordSource {
-  MANUAL
-  MAIL
-}
-
-enum PurchaseMessageLanguage {
-  TR
-  EN
-}
-
-model RawMaterial {
-  id String @id @default(cuid())
-
-  code String @unique
-  name String @unique
-
-  isActive Boolean @default(true)
-
-  supplierRawMaterials SupplierRawMaterial[]
-
-  receiptItems RawMaterialReceiptItem[]
-
-  priceRecords  RawMaterialPriceRecord[]
-  priceRequests RawMaterialPriceRequest[]
-
-  purchaseOrderItems PurchaseOrderItem[]
-
-  purchaseRequestItems PurchaseRequestItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([name])
-  @@index([isActive])
-}
-
-model RawMaterialPriceRecord {
-  id String @id @default(cuid())
-
-  supplierId String
-
-  rawMaterialId String
-  productId     String?
-
-  priceRequestSupplierId String?
-
-  price         Decimal  @db.Decimal(18, 4)
-  previousPrice Decimal? @db.Decimal(18, 4)
-
-  currencyId String?
-  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
-
-  unitId String?
-  unit   Unit? @relation("RawMaterialPriceRecordUnit", fields: [unitId], references: [id], onDelete: SetNull)
-
-  priceDate  DateTime  @db.Date
-  validUntil DateTime? @db.Date
-
-  source PriceRecordSource @default(MANUAL)
-
-  paymentTermId String?
-  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id], onDelete: SetNull)
-
-  deliveryDay Int?
-
-  note String?
-
-  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
-
-  priceRequestSupplier RawMaterialPriceRequestSupplier? @relation(fields: [priceRequestSupplierId], references: [id], onDelete: SetNull)
-
-  purchaseOrderItems PurchaseOrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([unitId])
-  @@index([supplierId])
-  @@index([rawMaterialId])
-  @@index([productId])
-  @@index([priceRequestSupplierId])
-  @@index([currencyId])
-  @@index([priceDate])
-  @@index([validUntil])
-  @@index([source])
-  @@index([paymentTermId])
-  @@index([deliveryDay])
-}
-
-model RawMaterialPriceRequestDraft {
-  id String @id @default(cuid())
-
-  title   String
-  subject String?
-  message String
-
-  language PurchaseMessageLanguage @default(EN)
-
-  isActive Boolean @default(true)
-
-  requests RawMaterialPriceRequest[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([language])
-  @@index([isActive])
-}
-
-model RawMaterialPriceRequest {
-  id String @id @default(cuid())
-
-  draftId String?
-
-  rawMaterialId String?
-  productId     String?
-
-  subject String?
-  message String
-
-  requestedAt DateTime @default(now())
-
-  draft       RawMaterialPriceRequestDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
-  rawMaterial RawMaterial?                  @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
-  product     Product?                      @relation(fields: [productId], references: [id], onDelete: SetNull)
-
-  suppliers RawMaterialPriceRequestSupplier[]
-
-  createdAt DateTime @default(now())
-
-  @@index([draftId])
-  @@index([rawMaterialId])
-  @@index([productId])
-  @@index([requestedAt])
-}
-
-model RawMaterialPriceRequestSupplier {
-  id String @id @default(cuid())
-
-  requestId  String
-  supplierId String
-  contactId  String?
-
-  status PriceRequestSupplierStatus @default(DRAFT)
-
-  token          String?   @unique
-  tokenExpiresAt DateTime?
-  respondedAt    DateTime?
-
-  sentAt DateTime?
-  error  String?
-
-  request  RawMaterialPriceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  supplier Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-
-  priceRecords RawMaterialPriceRecord[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([requestId, supplierId])
-  @@index([requestId])
-  @@index([supplierId])
-  @@index([contactId])
-  @@index([status])
-  @@index([token])
-  @@index([tokenExpiresAt])
-  @@index([respondedAt])
-}
-
-model RawMaterialPurchaseSettings {
-  id String @id @default(cuid())
-
-  enabled Boolean @default(true)
-
-  messageLanguage PurchaseMessageLanguage @default(EN)
-
-  defaultCountryCode String @default("90")
-
-  mailSubjectTr String?
-  mailSubjectEn String?
-
-  messageTr String
-  messageEn String
-
-  addProductName  Boolean @default(true)
-  addPaymentTerm  Boolean @default(true)
-  addDeliveryTerm Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- business/procurement/purchaseRequest.prisma ----
-enum PurchaseRequestStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
-  ORDERED
-  CANCELLED
-}
-
-enum PurchaseRequestPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
-model PurchaseRequest {
-  id String @id @default(cuid())
-
-  requestNo String @unique
-
-  requestedById String
-  requestedBy   User @relation("PurchaseRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
-
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-
-  status   PurchaseRequestStatus   @default(DRAFT)
-  priority PurchaseRequestPriority @default(NORMAL)
-
-  requestedDate DateTime @default(now()) @db.Date
-  neededDate    DateTime? @db.Date
-
-  reason String?
-  note   String?
-
-  items PurchaseRequestItem[]
-
-  purchaseOrders PurchaseOrder[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  @@index([requestNo])
-  @@index([requestedById])
-  @@index([departmentId])
-  @@index([status])
-  @@index([priority])
-  @@index([requestedDate])
-  @@index([neededDate])
-  @@index([deletedAt])
-}
-
-model PurchaseRequestItem {
-  id String @id @default(cuid())
-
-  purchaseRequestId String
-
-  category PurchaseCategory
-
-  rawMaterialId String?
-  productId     String?
-
-  serviceName  String?
-  materialName String?
-  description  String?
-
-  quantity Decimal @db.Decimal(18, 4)
-  
-  unitId String?
-  unit   Unit? @relation("PurchaseRequestItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
-
-  estimatedUnitPrice Decimal? @db.Decimal(18, 4)
-
-  currencyId String?
-  currency   Currency? @relation("PurchaseRequestItemCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
-
-  note String?
-
-  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
-
-  rawMaterial RawMaterial? @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
-  product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
-
-  purchaseOrderItems PurchaseOrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([unitId])
-  @@index([purchaseRequestId])
-  @@index([category])
-  @@index([rawMaterialId])
-  @@index([productId])
-  @@index([currencyId])
-}
-
-// ---- business/procurement/purchaseOrder.prisma ----
-enum PurchaseOrderStatus {
-  DRAFT
-  ORDERED
-  SENT_TO_IMPORT
-  PARTIALLY_RECEIVED
-  RECEIVED
-  CANCELLED
-}
-
-enum PurchaseOrderType {
-  DOMESTIC
-  IMPORT
-}
-
-enum PurchaseCategory {
-  RAW_MATERIAL
-  PACKAGING
-  MATERIAL
-  TRADE_PRODUCT
-  SERVICE
-  TRANSPORT
-}
-
-model PurchaseOrder {
-  id String @id @default(cuid())
-
-  supplierId String
-  orderNo    String @unique
-
-  orderDate    DateTime  @db.Date
-  deliveryDate DateTime? @db.Date
-
-  purchaseReasonId String?
-  purchaseReason   PurchaseReason? @relation(fields: [purchaseReasonId], references: [id], onDelete: SetNull)
-
-  placeOfUseId String?
-  placeOfUse   PlaceOfUse? @relation(fields: [placeOfUseId], references: [id], onDelete: SetNull)
-
-  purchasedTypeId String?
-  purchasedType   Purchased? @relation(fields: [purchasedTypeId], references: [id], onDelete: SetNull)
-
-  transportTypeId String?
-  transportType   TransportType? @relation(fields: [transportTypeId], references: [id], onDelete: SetNull)
-
-  paymentTermId String?
-  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id], onDelete: SetNull)
-
-  deliveryDay Int?
-
-  status    PurchaseOrderStatus @default(DRAFT)
-  orderType PurchaseOrderType   @default(DOMESTIC)
-
-  currencyId String?
-  currency   Currency? @relation("PurchaseOrderCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
-
-  totalWithoutTax Decimal? @db.Decimal(18, 2)
-  totalTax        Decimal? @db.Decimal(18, 2)
-  totalWithTax    Decimal? @db.Decimal(18, 2)
-
-  isDifferentVat Boolean @default(false)
-
-  isStopaj    Boolean  @default(false)
-  stopajRatio Decimal? @db.Decimal(8, 2)
-  totalStopaj Decimal? @db.Decimal(18, 2)
-
-  isTevkifat    Boolean  @default(false)
-  tevkifatRatio Decimal? @db.Decimal(8, 2)
-  totalTevkifat Decimal? @db.Decimal(18, 2)
-
-  isInsurance Boolean @default(false)
-
-  supplierPointId String?
-  supplierPoint   SupplierPoint? @relation(fields: [supplierPointId], references: [id], onDelete: SetNull)
-
-  purchaseRequestId String?
-  purchaseRequest   PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id], onDelete: SetNull)
-
-  description String?
-  note        String?
-
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-
-  items    PurchaseOrderItem[]
-  receipts RawMaterialReceipt[]
-
-  createdById String?
-  createdBy   User? @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  @@index([purchaseRequestId])
-  @@index([supplierId])
-  @@index([orderDate])
-  @@index([purchaseReasonId])
-  @@index([placeOfUseId])
-  @@index([purchasedTypeId])
-  @@index([transportTypeId])
-  @@index([paymentTermId])
-  @@index([currencyId])
-  @@index([supplierPointId])
-  @@index([status])
-  @@index([orderType])
-  @@index([createdById])
-  @@index([deletedAt])
-}
-
-model PurchaseOrderItem {
-  id String @id @default(cuid())
-
-  purchaseOrderId String
-
-  category PurchaseCategory @default(MATERIAL)
-
-  rawMaterialId String?
-  productId     String?
-  priceRecordId String?
-
-  serviceName  String?
-  materialName String?
-  description  String?
-
-  quantity Decimal @db.Decimal(18, 4)
-
-  unitId String?
-  unit   Unit? @relation("PurchaseOrderItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
-
-  unitPrice Decimal @db.Decimal(18, 4)
-
-  currencyId String?
-  currency   Currency? @relation("PurchaseOrderItemCurrency", fields: [currencyId], references: [id], onDelete: SetNull)
-
-  taxRatioId String?
-  taxRatio   TaxRatio? @relation("PurchaseOrderItemTaxRatio", fields: [taxRatioId], references: [id], onDelete: SetNull)
-
-  differentVatRatioId String?
-  differentVatRatio   TaxRatio? @relation("PurchaseOrderItemDifferentVatRatio", fields: [differentVatRatioId], references: [id], onDelete: SetNull)
-
-  totalWithoutTax Decimal? @db.Decimal(18, 2)
-  taxAmount       Decimal? @db.Decimal(18, 2)
-  totalWithTax    Decimal? @db.Decimal(18, 2)
-
-  note String?
-
-  purchaseOrder PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  rawMaterial   RawMaterial?            @relation(fields: [rawMaterialId], references: [id], onDelete: SetNull)
-  product       Product?                @relation(fields: [productId], references: [id], onDelete: SetNull)
-  priceRecord   RawMaterialPriceRecord? @relation(fields: [priceRecordId], references: [id], onDelete: SetNull)
-
-  purchaseRequestItemId String?
-  purchaseRequestItem   PurchaseRequestItem? @relation(fields: [purchaseRequestItemId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-
-  @@index([purchaseOrderId])
-  @@index([purchaseRequestItemId])
-  @@index([category])
-  @@index([rawMaterialId])
-  @@index([productId])
-  @@index([priceRecordId])
-  @@index([unitId])
-  @@index([currencyId])
-  @@index([taxRatioId])
-  @@index([differentVatRatioId])
-}
-
-// ---- business/procurement/rawMaterialReceipt.prisma ----
-enum RawMaterialReceiptStatus {
-  DRAFT
-  RECEIVED
-  QC_PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-model RawMaterialReceipt {
-  id String @id @default(cuid())
-
-  supplierId      String
-  purchaseOrderId String?
-
-  receiptNo String @unique
-
-  receiptDate DateTime @db.Date
-
-  supplierBatchNo String?
-  documentNo      String?
-
-  status RawMaterialReceiptStatus @default(RECEIVED)
-
-  note String?
-
-  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
-
-  items RawMaterialReceiptItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  @@index([supplierId])
-  @@index([purchaseOrderId])
-  @@index([receiptDate])
-  @@index([status])
-  @@index([deletedAt])
-}
-
-model RawMaterialReceiptItem {
-  id String @id @default(cuid())
-
-  receiptId String
-
-  rawMaterialId String
-  productId     String?
-
-  quantity Decimal @db.Decimal(18, 4)
-
-  unitId String?
-  unit   Unit? @relation("RawMaterialReceiptItemUnit", fields: [unitId], references: [id], onDelete: SetNull)
-
-  lotNo String?
-
-  receipt     RawMaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  rawMaterial RawMaterial        @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  product     Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
-
-  productionInputs ProductionInput[]
-
-  createdAt DateTime @default(now())
-
-  @@index([unitId])
-  @@index([receiptId])
-  @@index([rawMaterialId])
-  @@index([productId])
-  @@index([lotNo])
-}
-
-// ---- business/production/production.prisma ----
-enum ProductionJobType {
-  PRODUCTION                    // Üretim işi
-  BREAKDOWN                     // Bekleme / duruş / arıza kaydı
-}
-
-enum ProductionStatus {
-  PLANNED                       // Planlandı
-  COMPLETED                     // Tamamlandı
-  CANCELLED                     // İptal edildi
-  WAITING                       // Beklemede
-}
-
-enum ProductionDelayReason {
-  BREAKDOWN_INTERVENTION        // Arıza / müdahale
-  MAINTENANCE                   // Bakım
-  OPERATIONAL_WAITING           // Operasyonel bekleme
-  RAW_MATERIAL_WAITING          // Hammadde bekleme
-  ANALYSIS_WAITING              // Analiz bekleme
-  CLEANING                      // Temizlik
-  OTHER                         // Diğer
-}
-
-model ProductionReactor {
-  id                    String @id @default(cuid()) // Reaktör benzersiz id'si
-
-  code                  String @unique // Reaktör kodu: R1, R2 vb.
-  name                  String         // Reaktör adı
-
-  sortOrder             Int     @default(0) // Ekranda ve planlamada sıralama
-  isActive              Boolean @default(true) // Reaktör aktif mi?
-
-  jobs                  ProductionJob[] // Reaktöre bağlı üretim ve duruş kayıtları
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-}
-
-model ProductionPeriodSetting {
-  id                    String @id @default(cuid()) // Dönem ayarı benzersiz id'si
-
-  year                  Int // ISO yıl
-  week                  Int // ISO hafta
-
-  reactorLoadOrder      Json? // Maksimum üretim için reaktör yükleme sırası
-  maxProductionStart    DateTime? // Maksimum üretim başlangıç tarihi
-  maxProductionEnd      DateTime? // Maksimum üretim bitiş tarihi
-
-  createdAt             DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt             DateTime @updatedAt // Güncellenme tarihi
-
-  @@unique([year, week]) 
-  @@index([year, week])
-}
-
-model ProductionRawMaterialOrigin {
-  id                    String @id @default(cuid()) // Hammadde menşei benzersiz id'si
-
-  rawMaterialKey        String // Hammadde anahtarı: twoEH, pta, aa vb.
-  rawMaterialName       String // Hammadde görünen adı
-  brandName             String // Marka / menşei adı
-  isActive              Boolean @default(true) // Aktif mi?
-
-  createdAt             DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt             DateTime @updatedAt // Güncellenme tarihi
-
-  @@unique([rawMaterialKey, brandName])
-  @@index([rawMaterialKey])
-}
-
-model ProductionJob {
-  id                    String @id @default(cuid()) // Üretim işi benzersiz id'si
-
-  type                  ProductionJobType // Üretim mi, duruş/bekleme kaydı mı?
-  status                ProductionStatus // Planlandı, tamamlandı, iptal edildi vb.
-
-  year                  Int // ISO yıl
-  week                  Int // ISO hafta
-
-  reactorId             String // Reaktör id'si
-  reactor               ProductionReactor @relation(fields: [reactorId], references: [id]) // Bağlı reaktör
-
-  batchNo               String? // Batch numarası
-
-  productId             String? // Ürün id'si
-  product               Product? @relation("ProductionJobProduct", fields: [productId], references: [id]) // Ürün ilişkisi
-
-  productCode           String? // Ürün kodu snapshot
-  productName           String? // Ürün adı snapshot
-
-  plannedStart          DateTime // Planlanan başlangıç
-  plannedEnd            DateTime // Planlanan bitiş
-  plannedDurationMinute Int // Planlanan süre dakika
-
-  plannedQuantity       Decimal? @db.Decimal(14, 3) // Planlanan üretim miktarı
-  plannedTwoEH          Decimal? @db.Decimal(14, 3) // Planlanan 2-EH miktarı
-  plannedPTA            Decimal? @db.Decimal(14, 3) // Planlanan PTA miktarı
-
-  formen                String? // Formen
-  actualStart           DateTime? // Gerçek başlangıç
-  actualEnd             DateTime? // Gerçek bitiş
-  actualDurationMinute  Int? // Gerçek süre dakika
-  actualQuantity        Decimal? @db.Decimal(14, 3) // Gerçek üretim miktarı
-
-  description           String? // Açıklama
-
-  delayReason           ProductionDelayReason? // Duruş / bekleme nedeni
-
-  rekuper               Decimal? @db.Decimal(14, 3) // Reküper miktarı
-
-  twoEthylAlcohol       Decimal? @db.Decimal(14, 3) // 2-EH tüketimi
-  totalTwoEthylAlcohol  Decimal? @db.Decimal(14, 3) // Toplam tüketilen 2-EH
-  twoEthylAlcoholLotNo  String? // 2-EH lot no
-
-  pta                   Decimal? @db.Decimal(14, 3) // PTA tüketimi
-  ptaLotNo              String? // PTA lot no
-
-  aa                    Decimal? @db.Decimal(14, 3) // AA tüketimi
-  aaLotNo               String? // AA lot no
-
-  tma                   Decimal? @db.Decimal(14, 3) // TMA tüketimi
-  tmaLotNo              String? // TMA lot no
-
-  catalyst              Decimal? @db.Decimal(14, 3) // Katalizör tüketimi
-  catalystLotNo         String? // Katalizör lot no
-
-  causticSoda           Decimal? @db.Decimal(14, 3) // Kostik tüketimi
-
-  reactionStartTime               String? // Reaksiyon başlangıç saati
-  reactionStartTemperature        Decimal? @db.Decimal(10, 3) // Reaksiyon başlangıç sıcaklığı
-  reactionStartCatalystAmount     Decimal? @db.Decimal(14, 3) // İlk katalizör miktarı
-
-  catalyst2Time                   String? // 2. katalizör ekleme saati
-  catalyst2Temperature            Decimal? @db.Decimal(10, 3) // 2. katalizör sıcaklığı
-  catalyst2Amount                 Decimal? @db.Decimal(14, 3) // 2. katalizör miktarı
-
-  catalyst3Time                   String? // 3. katalizör ekleme saati
-  catalyst3Temperature            Decimal? @db.Decimal(10, 3) // 3. katalizör sıcaklığı
-  catalyst3Amount                 Decimal? @db.Decimal(14, 3) // 3. katalizör miktarı
-
-  washingTime                     String? // Yıkama saati
-  washingTemperature              Decimal? @db.Decimal(10, 3) // Yıkama sıcaklığı
-
-  strippingStartTime              String? // Stripping başlangıç saati
-  strippingStartTemperature       Decimal? @db.Decimal(10, 3) // Stripping başlangıç sıcaklığı
-
-  flashPointTime                  String? // Parlama noktası ölçüm saati
-  flashPointTemperature           Decimal? @db.Decimal(10, 3) // Parlama noktası sıcaklığı
-  flashPointValue                 Decimal? @db.Decimal(10, 3) // Parlama noktası değeri
-
-  hasFinalWashing                 Boolean @default(false) // Son yıkama yapıldı mı?
-
-  finalFlashPointTime             String? // Son parlama noktası ölçüm saati
-  finalFlashPointTemperature      Decimal? @db.Decimal(10, 3) // Son parlama noktası sıcaklığı
-  finalFlashPointValue            Decimal? @db.Decimal(10, 3) // Son parlama noktası değeri
-
-  dryingStartTime                 String? // Kurutma başlangıç saati
-  dryingEndTime                   String? // Kurutma bitiş saati
-
-  extraAlcohol1                   Decimal? @db.Decimal(14, 3) // İlave alkol 1
-  extraAlcohol2                   Decimal? @db.Decimal(14, 3) // İlave alkol 2
-  extraAlcohol3                   Decimal? @db.Decimal(14, 3) // İlave alkol 3
-
-  rekuperLitre Decimal? @db.Decimal(14, 3) // Çıkan reküper litre
-  dropTank                        String? // Drop tank
-  stockTank                       String? // Stok tank
-
-  productionBreakdownMinute       Int? // Üretim esnası arıza/duruş süresi
-  productionBreakdownDescription  String? // Üretim esnası arıza/duruş açıklaması
-
-  isDeleted                       Boolean @default(false) // Soft delete durumu
-
-  createdById                     String? // Oluşturan kullanıcı id
-  updatedById                     String? // Güncelleyen kullanıcı id
-
-  createdAt                       DateTime @default(now())
-  updatedAt                       DateTime @updatedAt
-
-  reactionRows                    ProductionReactionRow[] // Reaksiyon takip satırları
-  inputs                          ProductionInput[] // Üretim girdileri
-  outputs                         ProductionOutput[] // Üretim çıktıları
-
-  @@index([year, week])
-  @@index([reactorId])
-  @@index([status])
-  @@index([type])
-  @@index([productId])
-  @@index([isDeleted])
-  @@index([plannedStart, plannedEnd])
-}
-
-model ProductionReactionRow {
-  id                              String @id @default(cuid()) // Reaksiyon satırı benzersiz id'si
-
-  productionJobId       String // Üretim işi id'si
-  productionJob         ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
-
-  rowOrder              Int // Satır sırası
-
-  time                  String? // Ölçüm saati
-  temperature           Decimal? @db.Decimal(10, 3) // Sıcaklık
-  acidIndex             Decimal? @db.Decimal(10, 3) // Asit indisi
-  consumption           Decimal? @db.Decimal(10, 3) // Tüketim
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([productionJobId])
-}
-
-model ProductionInput {
-  id                    String @id @default(cuid()) // Üretim girdi kaydı id'si
-
-  productionJobId   String // Üretim işi id'si
-  productionJob     ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
-
-  productId         String? // Hammadde / ürün id'si
-  product           Product? @relation("ProductionInputProduct", fields: [productId], references: [id]) // Hammadde / ürün ilişkisi
-
-  rawMaterialReceiptItemId      String? // Hammadde kabul kalemi id'si
-  rawMaterialReceiptItem   RawMaterialReceiptItem? @relation(fields: [rawMaterialReceiptItemId], references: [id]) // Kabul kalemi ilişkisi
-
-  rawMaterialName         String? // Hammadde adı snapshot
-
-  lotNo                   String? // Lot numarası
-
-  quantity                Decimal @db.Decimal(14, 3) // Tüketilen miktar
-  unitName                String? // Birim adı snapshot
-
-  originId                String? // Menşei id
-  originName              String? // Menşei adı snapshot
-
-  createdAt               DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt               DateTime @updatedAt // Güncellenme tarihi
-
-  @@index([productionJobId])
-  @@index([productId])
-  @@index([rawMaterialReceiptItemId])
-  @@index([rawMaterialName])
-  @@index([lotNo])
-}
-
-model ProductionOutput {
-  id                  String @id @default(cuid()) // Üretim çıktı kaydı id'si
-
-  productionJobId     String // Üretim işi id'si
-  productionJob       ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade) // Bağlı üretim işi
-
-  productId           String? // Üretilen ürün id'si
-  product             Product? @relation("ProductionOutputProduct", fields: [productId], references: [id]) // Ürün ilişkisi
-
-  lotNo               String? // Ürün lot numarası
-
-  quantity            Decimal @db.Decimal(14, 3) // Üretilen miktar
-  unitName            String? // Birim adı snapshot
-
-  tankNo              String? // Stok tankı
-
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@index([productionJobId])
-  @@index([productId])
-  @@index([lotNo])
-}
-
-// ---- business/utility/meter.prisma ----
-model UtilityMeter {
-  id String @id @default(cuid())
-
-  code String @unique
-  name String
-
-  meterTypeId String
-  meterType   UtilityMeterType @relation(fields: [meterTypeId], references: [id], onDelete: Restrict)
-
-  unit String
-
-  isActive Boolean @default(true)
-
-  readings UtilityMeterReading[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  @@index([meterTypeId])
-  @@index([isActive])
-  @@map("utility_meters")
-}
-
-// ---- business/utility/reading.prisma ----
-model UtilityMeterReading {
-  id String @id @default(cuid())
-
-  meterId String
-  meter   UtilityMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
-
-  readingDate DateTime @db.Date
-
-  value Decimal @db.Decimal(18, 2)
-
-  note String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([meterId, readingDate])
-  @@index([meterId])
-  @@index([readingDate])
-  @@map("utility_meter_readings")
-}
 
 // ---- core/base.prisma ----
 generator client {
@@ -1153,344 +10,211 @@ datasource db {
   provider = "postgresql"
 }
 
-// ---- lookups/unit.prisma ----
-model Unit {
+// ---- auth/role.prisma ----
+model Role {
   id String @id @default(cuid())
 
-  code   String @unique
-  name   String @unique
-  symbol String?
+  name        String  @unique
+  description String?
 
-  isActive Boolean @default(true)
-
-  rawMaterialPriceRecords RawMaterialPriceRecord[] @relation("RawMaterialPriceRecordUnit")
-  purchaseRequestItems    PurchaseRequestItem[]    @relation("PurchaseRequestItemUnit")
-  purchaseOrderItems      PurchaseOrderItem[]      @relation("PurchaseOrderItemUnit")
-  rawMaterialReceiptItems RawMaterialReceiptItem[] @relation("RawMaterialReceiptItemUnit")
+  users User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([code])
-  @@index([name])
-  @@index([isActive])
-  @@map("units")
+  @@map("Role")
+}
+
+// ---- auth/permission.prisma ----
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+model Permission {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  description String?
+
+  userPermissions UserPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Permission")
+}
+
+model UserPermission {
+  id String @id @default(cuid())
+
+  userId       String
+  permissionId String
+
+  effect PermissionEffect @default(ALLOW)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@index([effect])
+  @@map("UserPermission")
+}
+
+// ---- auth/user.prisma ----
+model User {
+  id String @id @default(cuid())
+
+  firstName String
+  lastName  String
+
+  email        String @unique
+  passwordHash String
+
+  isActive            Boolean   @default(true)
+  tokenVersion        Int       @default(0)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  userPermissions UserPermission[]
+
+  documentsUploaded Document[] @relation("UserUploadedDocuments")
+
+  approvalsRequested Approval[] @relation("ApprovalRequestedBy")
+  approvalsToDecide  Approval[] @relation("ApprovalApprover")
+
+  assignments        Assignment[] @relation("AssignmentUser")
+  assignmentsCreated Assignment[] @relation("AssignmentCreatedBy")
+
+  authEventLogs AuthEventLog[]
+
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+
+  phone           String?
+  profilePhotoUrl String?
+
+  preferredTheme String? @default("light")
+
+  emailVerifiedAt          DateTime?
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
+
+  employee Employee?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("User")
 }
 
 // ---- lookups/bloodType.prisma ----
 model BloodType {
-  id          String @id @default(cuid()) // Kan grubu benzersiz id'si
-
-  legacyId    Int? @unique // Eski sistemden gelen id
-
-  name        String @unique // Kan grubu adı (A+, A-, B+, B-, AB+, AB-, 0+, 0-)
-
-  isActive    Boolean @default(true) // Kullanım durumu
-
-  employees   Employee[] // Bu kan grubuna sahip çalışanlar
-
-  createdAt   DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
-}
-
-// ---- lookups/city.prisma ----
-model City {
-  id            Int @id // Şehir id'si
-
-  countryId     Int // Bağlı olduğu ülke id'si
-
-  value         String // Şehir adı
-
-  country       Country @relation(fields: [countryId], references: [id], onDelete: Restrict) // Bağlı olduğu ülke
-
-  districts     District[] // Şehre bağlı ilçeler
-  taxOffices    TaxOffice[] // Şehre bağlı vergi daireleri
-
-  employees     Employee[] // Bu şehirde kayıtlı çalışanlar
-
-  suppliers     Supplier[]
-
-  @@index([countryId])
-
-  @@map("cities")
-}
-
-// ---- lookups/country.prisma ----
-model Country {
-  id        Int    @id
-  value     String @db.VarChar(255)
-  iso2      String @unique @db.VarChar(2)
-  phoneCode String @db.VarChar(10)
-
-  cities     City[]
-  subRegions SubRegion[]
-
-  suppliers Supplier[]
-
-  @@index([value])
-  @@map("countries")
-}
-
-// ---- lookups/currency.prisma ----
-model Currency {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  code     String @unique
-  name     String?
-
-  isActive Boolean @default(true)
-
-  equipments           Equipment[]
-  maintenances         Maintenance[]
-  maintenanceMaterials MaintenanceMaterial[]
-
-  rawMaterialPriceRecords RawMaterialPriceRecord[]
-  
-  purchaseRequestItems PurchaseRequestItem[] @relation("PurchaseRequestItemCurrency")
-
-  purchaseOrders     PurchaseOrder[]     @relation("PurchaseOrderCurrency")
-  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItemCurrency")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/district.prisma ----
-model District {
-  id          Int @id // İlçe id'si
-
-  cityId      Int // Bağlı olduğu şehir id'si
-
-  value       String // İlçe adı
-
-  city        City @relation(fields: [cityId], references: [id], onDelete: Restrict) // Bağlı olduğu şehir
-
-  employees   Employee[] // Bu ilçede kayıtlı çalışanlar
-
-  suppliers   Supplier[]
-
-  @@index([cityId])
-
-  @@map("districts")
-}
-
-// ---- lookups/faultType.prisma ----
-model FaultType {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  name     String @unique
-
-  isActive Boolean @default(true)
-
-  maintenances Maintenance[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/location.prisma ----
-model Location {
-  id          String @id @default(cuid())
-
-  legacyId    Int? @unique
-
-  name        String @unique
-
-  isActive    Boolean @default(true)
-
-  employees   Employee[]
-
-  equipments  Equipment[]
-
-  maintenances Maintenance[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ---- lookups/machineType.prisma ----
-model MachineType {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-
-  name     String @unique
-  isActive Boolean @default(true)
-
-  equipments Equipment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/paymentTerm.prisma ----
-enum PaymentTermScope {
-  GENERAL              // Malzeme / hizmet satınalma vadeleri
-  RAW_MATERIAL         // Hammadde satınalma vadeleri
-}
-
-model PaymentTerm {
-  id              String @id @default(cuid())
-
-  legacyId        Int? // Eski sistemdeki numeric id değeri
-
-  scope           PaymentTermScope @default(GENERAL) // Vadenin kullanılacağı satınalma türü
-
-  code            String? // Hammadde satınalma için CASH, PN, INV, BL gibi kod
-  name            String // Kullanıcıya gösterilecek vade adı
-
-  days            Int? // Gün bilgisi varsa tutulur: 7, 14, 30 vb.
-  requiresDay     Boolean @default(false) // Hammadde satınalmada gün girişi gerekiyor mu?
-
-  rawMaterialPriceRecords RawMaterialPriceRecord[]
-
-  purchaseOrders PurchaseOrder[]
-
-  isActive        Boolean @default(true)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([scope, legacyId])
-  @@unique([scope, name])
-  @@index([scope])
-  @@index([isActive])
-}
-
-// ---- lookups/placeOfUse.prisma ----
-model PlaceOfUse {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  name     String @unique
-
-  purchaseOrders PurchaseOrder[]
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/productionYear.prisma ----
-model ProductionYear {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  year     Int @unique
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/purchased.prisma ----
-model Purchased {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  name     String @unique
-
-  purchaseOrders PurchaseOrder[]
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/purchaseReason.prisma ----
-model PurchaseReason {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  name     String @unique
-
-  purchaseOrders PurchaseOrder[]
-  
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/reasonFailure.prisma ----
-model FailureReason {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id Int @id
 
   name String @unique
 
   isActive Boolean @default(true)
 
-  maintenances Maintenance[]
+  employees Employee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("Lookup_BloodType")
+}
+
+// ---- lookups/country.prisma ----
+model Country {
+  id Int @id
+
+  value String @db.VarChar(255)
+
+  iso2 String @unique @db.VarChar(2)
+
+  phoneCode String @db.VarChar(10)
+
+  cities City[]
+
+  subRegions SubRegion[]
+
+  @@index([value])
+  @@map("Lookup_Country")
+}
+
+// ---- lookups/city.prisma ----
+model City {
+  id Int @id
+
+  countryId Int
+
+  value String
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+
+  districts District[]
+
+  taxOffices TaxOffice[]
+
+  employees Employee[]
+
+  @@index([countryId])
+  @@map("Lookup_City")
+}
+
+// ---- lookups/district.prisma ----
+model District {
+  id Int @id
+
+  cityId Int
+
+  value String
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  employees Employee[]
+
+  @@index([cityId])
+  @@map("Lookup_District")
 }
 
 // ---- lookups/subRegion.prisma ----
 model SubRegion {
-  id          String @id @default(cuid()) // Alt bölge benzersiz id'si
+  id Int @id
 
-  legacyId    Int? @unique // Eski sistemden gelen id
+  countryId Int
 
-  countryId   Int // Bağlı olduğu ülke id'si
+  country Country @relation(fields: [countryId], references: [id])
 
-  country     Country @relation(fields: [countryId], references: [id]) // Bağlı olduğu ülke
+  name String
 
-  name        String // Alt bölge adı
+  isActive Boolean @default(true)
 
-  isActive    Boolean @default(true) // Kullanım durumu
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt   DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
-
-  @@unique([countryId, name]) // Aynı ülke içinde alt bölge adı tekil olmalıdır
-
+  @@unique([countryId, name])
   @@index([countryId])
-
-  @@map("sub_regions")
-}
-
-// ---- lookups/supplierPoint.prisma ----
-model SupplierPoint {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  value    Int @unique
-  label    String?
-
-  purchaseOrders PurchaseOrder[]
-  
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/tankFarm.prisma ----
-model TankFarm {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-  name     String @unique
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@map("Lookup_SubRegion")
 }
 
 // ---- lookups/taxOffice.prisma ----
 model TaxOffice {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id Int @id
 
   cityId Int
 
@@ -1498,76 +222,288 @@ model TaxOffice {
 
   city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
 
-  suppliers Supplier[]
-
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([cityId, name])
-
   @@index([cityId])
+  @@map("Lookup_TaxOffice")
 }
 
-// ---- lookups/taxRatio.prisma ----
-model TaxRatio {
-  id        String @id @default(cuid())
+// ---- lookups/currency.prisma ----
+model Currency {
+  id Int @id
 
-  legacyId  Int? @unique
-  value     Decimal @unique @db.Decimal(5, 2)
+  code String @unique
+
+  name String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_Currency")
+}
+
+// ---- lookups/unit.prisma ----
+model Unit {
+  id Int @id
+
+  code String @unique
+
+  name String @unique
+
+  symbol String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("Lookup_Unit")
+}
+
+// ---- lookups/faultType.prisma ----
+model FaultType {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_FaultType")
+}
+
+// ---- lookups/location.prisma ----
+model Location {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  employees Employee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_Location")
+}
+
+// ---- lookups/machineType.prisma ----
+model MachineType {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_MachineType")
+}
+
+// ---- lookups/paymentTerm.prisma ----
+enum PaymentTermScope {
+  GENERAL
+  RAW_MATERIAL
+}
+
+model PaymentTerm {
+  id Int @id
+
+  scope PaymentTermScope @default(GENERAL)
+
+  code String?
+  name String
+  days Int?
+
+  requiresDay Boolean @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, name])
+  @@index([scope])
+  @@index([isActive])
+  @@map("Lookup_PaymentTerm")
+}
+
+// ---- lookups/placeOfUse.prisma ----
+model PlaceOfUse {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_PlaceOfUse")
+}
+
+// ---- lookups/productionReactor.prisma ----
+model ProductionReactor {
+  id Int @id
+
+  code      String  @unique
   name      String
-
-  purchaseOrderItemsTaxRatio         PurchaseOrderItem[] @relation("PurchaseOrderItemTaxRatio")
-  purchaseOrderItemsDifferentVatRatio PurchaseOrderItem[] @relation("PurchaseOrderItemDifferentVatRatio")
-
+  sortOrder Int
   isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("Production_Reactor")
+}
+
+// ---- lookups/productionYear.prisma ----
+model ProductionYear {
+  id Int @id
+
+  year Int @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_ProductionYear")
+}
+
+// ---- lookups/purchased.prisma ----
+model Purchased {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_Purchased")
+}
+
+// ---- lookups/purchaseReason.prisma ----
+model PurchaseReason {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_PurchaseReason")
+}
+
+// ---- lookups/reasonFailure.prisma ----
+model FailureReason {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_ReasonFailure")
+}
+
+// ---- lookups/supplierPoint.prisma ----
+model SupplierPoint {
+  id Int @id
+
+  value Int @unique
+
+  label String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_SupplierPoint")
+}
+
+// ---- lookups/tankFarm.prisma ----
+model TankFarm {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_TankFarm")
+}
+
+// ---- lookups/taxRatio.prisma ----
+model TaxRatio {
+  id Int @id
+
+  value Decimal @unique @db.Decimal(5, 2)
+
+  name String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Lookup_TaxRatio")
 }
 
 // ---- lookups/transportType.prisma ----
 model TransportType {
-  id String @id @default(cuid())
+  id Int @id
 
-  legacyId Int? @unique
-  name     String @unique
-
-  purchaseOrders PurchaseOrder[]
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ---- lookups/utilityMeterType.prisma ----
-model UtilityMeterType {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-
-  code String @unique
   name String @unique
 
-  defaultUnit String?
-
   isActive Boolean @default(true)
-
-  meters UtilityMeter[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("utility_meter_types")
+  @@map("Lookup_TransportType")
+}
+
+// ---- lookups/quality/appearance.prisma ----
+model QualityAppearance {
+  id Int @id
+
+  name String @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Quality_Appearance")
 }
 
 // ---- lookups/quality/inputControlAppearance.prisma ----
 model InputControlAppearance {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id Int @id
 
   name String @unique
 
@@ -1576,32 +512,17 @@ model InputControlAppearance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-}
-
-// ---- lookups/quality/qualityAppearance.prisma ----
-model QualityAppearance {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
-
-  name String @unique
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@map("Quality_InputControlAppearance")
 }
 
 // ---- lookups/quality/rawMaterialAnalysis.prisma ----
 model RawMaterialAnalysisParameter {
-  id String @id @default(cuid())
+  id Int @id
 
-  legacyId Int? @unique
-
-  name      String
-  fieldKey  String @unique
-  unit      String?
-  cleaned   Boolean @default(false)
+  name     String
+  fieldKey String  @unique
+  unit     String?
+  cleaned  Boolean @default(false)
 
   customSelect Boolean @default(false)
   lengthValue  Int?
@@ -1614,14 +535,13 @@ model RawMaterialAnalysisParameter {
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
+  @@map("Quality_RawMaterialAnalysisParameter")
 }
 
 model RawMaterialAnalysisOption {
-  id String @id @default(cuid())
+  id Int @id
 
-  legacyId Int?
-
-  parameterId String
+  parameterId Int
   parameter   RawMaterialAnalysisParameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
 
   value String
@@ -1632,15 +552,13 @@ model RawMaterialAnalysisOption {
   updatedAt DateTime @updatedAt
 
   @@unique([parameterId, value])
-  @@unique([parameterId, legacyId])
   @@index([parameterId])
+  @@map("Quality_RawMaterialAnalysisOption")
 }
 
 // ---- lookups/quality/rawMaterialCategory.prisma ----
 model RawMaterialCategory {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id Int @id
 
   name String @unique
 
@@ -1648,13 +566,13 @@ model RawMaterialCategory {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("Quality_RawMaterialCategory")
 }
 
 // ---- lookups/quality/rawMaterialType.prisma ----
 model RawMaterialType {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id Int @id
 
   name String @unique
 
@@ -1662,380 +580,25 @@ model RawMaterialType {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-// ---- masters/equipment.prisma ----
-enum EquipmentLevel {
-  MAIN
-  SUB
-}
-
-model Equipment {
-  id Int @id @default(autoincrement())
-
-  equipmentCode String? @unique
-  equipmentName String
-
-  level EquipmentLevel @default(MAIN)
-
-  parentId Int?
-  parent   Equipment?  @relation("EquipmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children Equipment[] @relation("EquipmentHierarchy")
-
-  locationId String?
-  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-
-  commissioningDate DateTime?
-
-  tradeMarkId Int?
-  tradeMark   EquipmentTradeMark? @relation(fields: [tradeMarkId], references: [id], onDelete: SetNull)
-
-  model String?
-
-  productionYear Int?
-
-  machineTypeId String?
-  machineType   MachineType? @relation(fields: [machineTypeId], references: [id], onDelete: SetNull)
-
-  isExproof Boolean @default(false)
-
-  price Decimal? @db.Decimal(18, 2)
-
-  currencyId String?
-  currency   Currency? @relation(fields: [currencyId], references: [id], onDelete: SetNull)
-
-  isScrap   Boolean   @default(false)
-  scrapDate DateTime?
-
-  lastMaintenanceDate DateTime?
-
-  description String?
-
-  maintenancesAsMain Maintenance[] @relation("MaintenanceMainEquipment")
-  maintenancesAsSub  Maintenance[] @relation("MaintenanceSubEquipment")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([equipmentName])
-  @@index([level])
-  @@index([parentId])
-  @@index([locationId])
-  @@index([tradeMarkId])
-  @@index([machineTypeId])
-  @@index([currencyId])
-  @@index([isScrap])
-  @@index([deletedAt])
-  @@map("equipments")
-}
-
-model EquipmentTradeMark {
-  id Int @id @default(autoincrement())
-
-  tradeMark String @unique
-
-  equipments Equipment[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([tradeMark])
-  @@index([deletedAt])
-  @@map("equipment_trade_marks")
-}
-
-// ---- masters/product.prisma ----
-model Product {
-  id String @id @default(cuid())
-
-  rawMaterialPriceRecords RawMaterialPriceRecord[]
-  rawMaterialPriceRequests RawMaterialPriceRequest[]
-
-  purchaseOrderItems PurchaseOrderItem[]
-  rawMaterialReceiptItems RawMaterialReceiptItem[]
-
-  purchaseRequestItems PurchaseRequestItem[]
-
-  productionJobs    ProductionJob[]    @relation("ProductionJobProduct")
-  productionInputs  ProductionInput[]  @relation("ProductionInputProduct")
-  productionOutputs ProductionOutput[] @relation("ProductionOutputProduct")
-
-}
-
-// ---- masters/supplier.prisma ----
-enum SupplierCategoryType {
-  RAW_MATERIAL
-  PACKAGING
-  MATERIAL
-  TRADE_PRODUCT
-  SERVICE
-  TRANSPORT
-}
-
-enum SupplierEvaluationType {
-  PURCHASING_QUALITY
-  DELIVERY_TIME
-  DELIVERY_QUANTITY
-  PAYMENT_TERMS
-
-  SERVICE_QUALITY
-  SCHEDULE_ADHERENCE
-  PROBLEM_SOLVING
-
-  RAW_MATERIAL_QUALITY
-  COA_COMPLIANCE
-  QC_COMPLIANCE
-  LOT_TRACEABILITY
-  PACKAGING_CONDITION
-}
-
-enum SupplierEvaluationSource {
-  PURCHASING
-  QUALITY
-}
-
-model Supplier {
-  id String @id @default(cuid()) // Tedarikçi benzersiz id'si
-
-  // TEMEL FİRMA BİLGİLERİ
-
-  name String // Firma adı
-
-  phone String // Firma telefon numarası
-  email String // Firma e-posta adresi
-
-  address String // Açık adres bilgisi
-
-  countryId Int?
-  country   Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
-
-  cityId Int?
-  city   City? @relation(fields: [cityId], references: [id], onDelete: SetNull)
-
-  districtId Int?
-  district   District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
-
-  taxOfficeId String?
-  taxOffice   TaxOffice? @relation(fields: [taxOfficeId], references: [id], onDelete: SetNull)
-
-  taxNumber String? // Vergi numarası
-
-  // BELGE / ISO DURUM ALANLARI
-
-  isDocumentNone Boolean @default(false) // Tedarikçi belge sunmadı / belgesi yok olarak işaretlendi mi?
-  documentRequestEnabled Boolean @default(false) // Tedarikçiye belge talep maili gönderilecek mi?
-
-  iso9001 Boolean @default(false) // ISO 9001 belgesi var mı?
-  iso14001 Boolean @default(false) // ISO 14001 belgesi var mı?
-  iso45001 Boolean @default(false) // ISO 45001 belgesi var mı?
-  iso50001 Boolean @default(false) // ISO 50001 belgesi var mı?
-
-  // İLETİŞİM BİLGİLERİ
-
-  contactName String // Firma içerisindeki birincil iletişim kişisi
-  contactPhone String? // İletişim kişisinin telefon numarası
-  contactEmail String? // İletişim kişisinin e-posta adresi
-
-  // EK BİLGİLER
-
-  notes String? // Tedarikçi hakkında genel notlar
-  risk String? // Risk değerlendirme notu
-
-  isActive Boolean @default(true) // Tedarikçi aktif mi?
-  isFavorite Boolean @default(false) // Favori tedarikçi mi?
-
-  // MALZEME / AMBALAJ TEDARİKÇİ DEĞERLENDİRMELERİ
-
-  purchasingQualityAverageScore Decimal? @db.Decimal(8, 2) // Satın alınan malzemenin kalite performansı ortalama puanı
-  deliveryTimeAverageScore Decimal? @db.Decimal(8, 2) // Teslimat terminine uyum ortalama puanı
-  deliveryQuantityAverageScore Decimal? @db.Decimal(8, 2) // Teslim edilen miktarın sipariş miktarına uygunluk ortalama puanı
-  paymentTermsAverageScore Decimal? @db.Decimal(8, 2) // Ödeme şartları ve ticari koşullar ortalama puanı
-
-  // HİZMET TEDARİKÇİ DEĞERLENDİRMELERİ
-
-  serviceQualityAverageScore Decimal? @db.Decimal(8, 2) // Verilen hizmetin kalite performansı ortalama puanı
-  scheduleAdherenceAverageScore Decimal? @db.Decimal(8, 2) // İş planına ve terminlere uyum ortalama puanı
-  problemSolvingAverageScore Decimal? @db.Decimal(8, 2) // Problem çözme ve aksiyon alma kabiliyeti ortalama puanı
-
-  // HAMMADDE TEDARİKÇİ DEĞERLENDİRMELERİ
-
-  rawMaterialQualityAverageScore Decimal? @db.Decimal(8, 2) // Gelen hammaddenin kalite performansı ortalama puanı
-  coaComplianceAverageScore Decimal? @db.Decimal(8, 2) // Analiz sertifikası (COA) uygunluk ortalama puanı
-  qcComplianceAverageScore Decimal? @db.Decimal(8, 2) // Giriş kalite kontrol sonuçlarının uygunluk ortalama puanı
-  lotTraceabilityAverageScore Decimal? @db.Decimal(8, 2) // Lot ve izlenebilirlik bilgilerinin uygunluk ortalama puanı
-  packagingConditionAverageScore Decimal? @db.Decimal(8, 2) // Ambalaj ve sevkiyat kondisyonu ortalama puanı
-
-  // GENEL TEDARİKÇİ PERFORMANSI
-
-  overallAverageScore Decimal? @db.Decimal(8, 2) // Tüm değerlendirme kriterlerinden hesaplanan genel performans puanı
-
-  // TEDARİKÇİ İLİŞKİLERİ
-
-  categories SupplierCategory[] // Tedarikçi kategorileri
-  documents SupplierDocument[] // Tedarikçi belgeleri
-  evaluations SupplierEvaluation[] // Tedarikçi değerlendirme kayıtları
-
-  // TEDARİK EDİLEN ÜRÜNLER
-
-  rawMaterials SupplierRawMaterial[] // Tedarikçinin sağlayabildiği ürün ve hammaddeler
-
-  // FİYAT YÖNETİMİ
-
-  priceRecords RawMaterialPriceRecord[] // Hammadde fiyat geçmişi
-  priceRequests RawMaterialPriceRequestSupplier[] // Fiyat talep süreçleri
-
-  // SATINALMA VE KABUL SÜREÇLERİ
-
-  purchaseOrders PurchaseOrder[] // Satınalma siparişleri
-  rawMaterialReceipts RawMaterialReceipt[] // Hammadde kabul kayıtları
-
-  // BAKIM VE SERVİS SÜREÇLERİ
-
-  maintenances Maintenance[]
-
-  // AUDIT ALANLARI
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-
-  createdById String
-  updatedById String?
-  deletedById String?
-
-  createdBy User @relation("SupplierCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy User? @relation("SupplierUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  deletedBy User? @relation("SupplierDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
-
-  @@index([name])
-  @@index([isActive])
-  @@index([deletedAt])
-
-  @@index([countryId])
-  @@index([cityId])
-  @@index([districtId])
-  @@index([taxOfficeId])
-}
-
-model SupplierCategory {
-  id              String @id @default(cuid()) // Tedarikçi kategori kaydı id'si
-
-  supplierId      String // Kategorinin bağlı olduğu tedarikçi id'si
-  type            SupplierCategoryType // Tedarikçi kategorisi: RAW_MATERIAL, PACKAGING, MATERIAL, TRADE_PRODUCT, SERVICE, TRANSPORT
-
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade) // Bağlı tedarikçi
-
-  createdAt       DateTime @default(now()) // Kategori eklenme tarihi
-
-  @@unique([supplierId, type])
-  @@index([type])
-}
-
-model SupplierRawMaterial {
-  id String @id @default(cuid())
-
-  supplierId    String
-  rawMaterialId String
-
-  supplier    Supplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-
-  createdAt DateTime @default(now())
-
-  @@unique([supplierId, rawMaterialId])
-  @@index([supplierId])
-  @@index([rawMaterialId])
-}
-
-
-model SupplierDocumentType {
-  id              String @id @default(cuid()) // Belge tipi benzersiz kayıt id'si
-
-  code            String @unique // Belge tipi kodu: ISO9001, ISO14001, ISO45001, ISO50001, SDS, TDS, COA vb.
-  name            String @unique // Kullanıcıya gösterilecek belge tipi adı
-  description     String? // Belge tipiyle ilgili açıklama
-
-  isActive        Boolean @default(true) // Belge tipi aktif mi?
-
-  documents       SupplierDocument[] // Bu belge tipine bağlı tedarikçi belge kayıtları
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model SupplierDocument {
-  id String @id @default(cuid())
-
-  supplierId     String
-  documentTypeId String
-
-  isRequested Boolean @default(false)
-  requestedAt DateTime?
-
-  expiryDate DateTime?
-  notes      String?
-
-  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  documentType SupplierDocumentType @relation(fields: [documentTypeId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([supplierId, documentTypeId])
-  @@index([supplierId])
-  @@index([documentTypeId])
-  @@index([expiryDate])
-}
-
-model SupplierEvaluation {
-  id String @id @default(cuid()) // Tedarikçi değerlendirme kaydı benzersiz id'si
-
-  supplierId String // Değerlendirilen tedarikçi id'si
-
-  purchaseOrderId String? // Değerlendirmenin bağlı olduğu satınalma siparişi
-  rawMaterialReceiptId String? // Değerlendirmenin bağlı olduğu hammadde kabul kaydı
-  qualityInspectionId String? // Değerlendirmenin bağlı olduğu kalite kontrol kaydı
-
-  evaluationType SupplierEvaluationType // Değerlendirme kriteri (Kalite, Termin, Evrak vb.)
-  source SupplierEvaluationSource // Değerlendirmeyi yapan birim (Satınalma, Kalite vb.)
-
-  score Decimal @db.Decimal(8, 2) // Verilen puan (0-100 arası)
-  comment String? // Değerlendirme notu ve açıklaması
-
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade) // Değerlendirilen tedarikçi
-
-  createdById String? 
-  createdBy User? @relation(fields: [createdById], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([supplierId])
-  @@index([purchaseOrderId])
-  @@index([rawMaterialReceiptId])
-  @@index([qualityInspectionId])
-  @@index([evaluationType])
-  @@index([source])
-  @@index([createdAt])
+  @@map("Quality_RawMaterialType")
 }
 
 // ---- organization/department.prisma ----
 model Department {
-  id          String @id @default(cuid()) // Departman benzersiz id'si
+  id String @id @default(cuid())
 
-  name        String // Departman adı
-  code        String @unique // Departman kodu
+  name String
+  code String @unique
 
-  users       User[] // Bu departmana bağlı kullanıcı hesapları
-  employees   Employee[] // Bu departmana bağlı çalışanlar
+  users     User[]
+  employees Employee[]
 
-  purchaseRequests PurchaseRequest[]
-
-  createdAt   DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([name])
+  @@map("Department")
 }
 
 // ---- organization/employee.prisma ----
@@ -2078,10 +641,10 @@ model Employee {
   userId String? @unique
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  bloodTypeId String?
+  bloodTypeId Int?
   bloodType   BloodType? @relation(fields: [bloodTypeId], references: [id], onDelete: SetNull)
 
-  locationId String?
+  locationId Int?
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   cityId Int?
@@ -2097,9 +660,6 @@ model Employee {
 
   note String?
 
-  maintenanceWorks     MaintenanceWorker[]
-  requestedMaintenances Maintenance[] @relation("MaintenanceRequestedByEmployee")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2114,7 +674,14 @@ model Employee {
   @@index([locationId])
   @@index([cityId])
   @@index([districtId])
+  @@map("Employee")
 }
+
+// ---- masters/equipment.prisma ----
+
+// ---- masters/product.prisma ----
+
+// ---- masters/supplier.prisma ----
 
 // ---- platform/approval.prisma ----
 enum ApprovalModule {
@@ -2126,15 +693,15 @@ enum ApprovalModule {
   MAINTENANCE
   SALES
   IMPORT
-  ACCOUNTING
   UTILITY
   SYSTEM
 }
 
 enum ApprovalEntityType {
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
-  PURCHASE_INVOICE
+  PURCHASE_RECEIPT
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -2180,12 +747,12 @@ model Approval {
   status ApprovalStatus @default(PENDING)
 
   requestedById String?
-  requestedBy   User? @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  requestedBy   User?   @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
 
   approverId String?
-  approver   User? @relation("ApprovalApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  approver   User?   @relation("ApprovalApprover", fields: [approverId], references: [id], onDelete: SetNull)
 
-  requestedAt DateTime @default(now())
+  requestedAt DateTime  @default(now())
   decidedAt   DateTime?
 
   decisionNote String?
@@ -2202,8 +769,7 @@ model Approval {
   @@index([approverId])
   @@index([requestedAt])
   @@index([decidedAt])
-
-  @@map("approvals")
+  @@map("Approval")
 }
 
 // ---- platform/assignment.prisma ----
@@ -2216,15 +782,15 @@ enum AssignmentModule {
   MAINTENANCE
   SALES
   IMPORT
-  ACCOUNTING
   UTILITY
   SYSTEM
 }
 
 enum AssignmentEntityType {
-  PURCHASE_INVOICE
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
+  PURCHASE_RECEIPT
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -2262,24 +828,24 @@ enum AssignmentRole {
 }
 
 model Assignment {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  module      AssignmentModule
-  entityType  AssignmentEntityType
-  entityId    String
+  module     AssignmentModule
+  entityType AssignmentEntityType
+  entityId   String
 
-  userId      String
-  user        User @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  role        AssignmentRole @default(RESPONSIBLE)
+  role AssignmentRole @default(RESPONSIBLE)
 
-  note        String?
+  note String?
 
   createdById String?
-  createdBy User? @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?   @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([module, entityType, entityId, userId, role])
   @@index([module])
@@ -2287,121 +853,122 @@ model Assignment {
   @@index([userId])
   @@index([role])
   @@index([createdById])
-
-  @@map("assignments")
+  @@map("Assignment")
 }
 
 // ---- platform/auditLog.prisma ----
 enum AuditModule {
-  AUTH                            // Kimlik doğrulama işlemleri
-  USER                            // Kullanıcı işlemleri
-  ROLE                            // Rol işlemleri
-  PERMISSION                      // Yetki işlemleri
-  SUPPLIER                        // Tedarikçi işlemleri
-  PRODUCT                         // Ürün işlemleri
-  PURCHASE                        // Satınalma işlemleri
-  RAW_MATERIAL_RECEIPT            // Hammadde kabul işlemleri
-  QUALITY                         // Kalite işlemleri
-  MAINTENANCE                     // Bakım işlemleri
-  PRODUCTION                      // Üretim işlemleri
-  STORAGE                         // Dosya depolama işlemleri
-  SYSTEM                          // Sistem işlemleri
+  AUTH
+  USER
+  ROLE
+  PERMISSION
+  SUPPLIER
+  PRODUCT
+  PURCHASE
+  RAW_MATERIAL_RECEIPT
+  QUALITY
+  MAINTENANCE
+  PRODUCTION
+  STORAGE
+  SYSTEM
 }
 
 enum AuditAction {
-  CREATE                          // Yeni kayıt oluşturma
-  UPDATE                          // Kayıt güncelleme
-  DELETE                          // Kayıt silme
-  RESTORE                         // Silinen kaydı geri alma
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
 
-  LOGIN                           // Sisteme giriş
-  LOGOUT                          // Sistemden çıkış
+  LOGIN
+  LOGOUT
 
-  APPROVE                         // Onay verme
-  REJECT                          // Reddetme
+  APPROVE
+  REJECT
 
-  UPLOAD                          // Dosya yükleme
-  DOWNLOAD                        // Dosya indirme
+  UPLOAD
+  DOWNLOAD
 
-  USER_ACTIVATED                  // Kullanıcı aktif edildi
-  USER_DEACTIVATED                // Kullanıcı pasif edildi
-  USER_ROLE_UPDATED               // Kullanıcı rolü güncellendi
-  USER_DEPARTMENT_UPDATED         // Kullanıcı departmanı güncellendi
-  USER_FORCE_LOGOUT               // Kullanıcının oturumları sonlandırıldı
+  USER_ACTIVATED
+  USER_DEACTIVATED
+  USER_ROLE_UPDATED
+  USER_DEPARTMENT_UPDATED
+  USER_FORCE_LOGOUT
 
-  ERROR                           // Hata oluşması
+  ERROR
 }
 
 model AuditLog {
-  id              String @id @default(cuid()) // Audit log benzersiz id'si
+  id String @id @default(cuid())
 
-  actorUserId     String? // İşlemi yapan kullanıcı id'si
-  actorEmail      String? // İşlemi yapan kullanıcı e-postası
+  actorUserId String?
+  actorEmail  String?
 
-  entityType      AuditModule // İşlem yapılan modül
-  entityId        String? // İşlem yapılan kayıt id'si
+  entityType AuditModule
+  entityId   String?
 
-  action          AuditAction // Yapılan işlem
+  action AuditAction
 
-  message         String? // İşlem açıklaması
+  message String?
 
-  oldValue        Json? // Değişiklik öncesi veri
-  newValue        Json? // Değişiklik sonrası veri
+  oldValue Json?
+  newValue Json?
 
-  ipAddress       String? // İşlemin yapıldığı IP adresi
-  userAgent       String? // Tarayıcı / cihaz bilgisi
+  ipAddress String?
+  userAgent String?
 
-  createdAt       DateTime @default(now()) // Log oluşturulma tarihi
+  createdAt DateTime @default(now())
 
   @@index([actorUserId])
   @@index([entityType])
   @@index([entityId])
   @@index([action])
   @@index([createdAt])
+  @@map("AuditLog")
 }
 
 // ---- platform/authEventLog.prisma ----
 enum AuthEventType {
-  REGISTER_SUCCESS              // Kullanıcı başarıyla kayıt oldu
+  REGISTER_SUCCESS
 
-  LOGIN_SUCCESS                 // Başarılı giriş yapıldı
-  LOGIN_FAILED                  // Başarısız giriş denemesi
-  LOGOUT                        // Kullanıcı sistemden çıkış yaptı
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
 
-  ACCOUNT_LOCKED                // Çok fazla başarısız giriş nedeniyle hesap kilitlendi
+  ACCOUNT_LOCKED
 
-  PASSWORD_RESET_REQUESTED      // Şifre sıfırlama talebi oluşturuldu
-  PASSWORD_RESET_COMPLETED      // Şifre sıfırlama işlemi tamamlandı
-  PASSWORD_CHANGED              // Kullanıcı mevcut şifresini değiştirdi
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
 
-  EMAIL_VERIFICATION_SENT       // E-posta doğrulama bağlantısı gönderildi
-  EMAIL_VERIFICATION_FAILED     // Geçersiz veya süresi geçmiş doğrulama denemesi yapıldı
-  EMAIL_VERIFIED                // E-posta başarıyla doğrulandı
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFICATION_FAILED
+  EMAIL_VERIFIED
 }
 
 model AuthEventLog {
-  id            String @id @default(cuid()) // Auth log kaydı benzersiz id'si
+  id String @id @default(cuid())
 
-  userId        String? // İşlemle ilişkili kullanıcı id'si
-  email         String? // İşlem sırasında kullanılan e-posta adresi
+  userId String?
+  email  String?
 
-  event         AuthEventType // Gerçekleşen kimlik doğrulama olayı
+  event AuthEventType
 
-  ipAddress     String? // İşlemin yapıldığı IP adresi
-  userAgent     String? // Tarayıcı, işletim sistemi ve cihaz bilgisi
+  ipAddress String?
+  userAgent String?
 
-  success       Boolean @default(false) // İşlem başarılı mı?
+  success Boolean @default(false)
 
-  message       String? // Hata mesajı veya açıklama
+  message String?
 
-  createdAt     DateTime @default(now()) // Log oluşturulma tarihi
+  createdAt DateTime @default(now())
 
-  user          User? @relation(fields: [userId], references: [id], onDelete: SetNull) // İşlemle ilişkili kullanıcı
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([email])
   @@index([event])
   @@index([createdAt])
+  @@map("AuthEventLog")
 }
 
 // ---- platform/document.prisma ----
@@ -2419,9 +986,11 @@ enum DocumentModule {
 }
 
 enum DocumentEntityType {
-  PURCHASE_INVOICE
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
+  PURCHASE_RECEIPT
+  VENDOR_INVOICE
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -2447,6 +1016,10 @@ enum DocumentEntityType {
 }
 
 enum DocumentType {
+  QUOTATION
+  PURCHASE_FORM
+  DELIVERY_NOTE
+  RECEIPT_DOCUMENT
   INVOICE
 
   ISO_9001
@@ -2459,7 +1032,6 @@ enum DocumentType {
   TDS
   ANALYSIS_REPORT
 
-  DELIVERY_NOTE
   PACKING_LIST
 
   MAINTENANCE_FORM
@@ -2493,7 +1065,7 @@ model Document {
   storageProvider String?
 
   uploadedById String?
-  uploadedBy   User? @relation("UserUploadedDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedBy   User?   @relation("UserUploadedDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   isActive Boolean @default(true)
 
@@ -2505,7 +1077,5 @@ model Document {
   @@index([documentType])
   @@index([uploadedById])
   @@index([isActive])
-
-  @@map("documents")
+  @@map("Document")
 }
-

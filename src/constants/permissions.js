@@ -4,158 +4,185 @@
 export const PERMISSIONS = {
   // KULLANICI VE YETKİ YÖNETİMİ
 
-  USER_READ: "user.read", // Kullanıcıları görüntüleme
-  USER_CREATE: "user.create", // Kullanıcı oluşturma
-  USER_UPDATE: "user.update", // Kullanıcı güncelleme
-  USER_DELETE: "user.delete", // Kullanıcı silme / pasife alma
+  USER_READ: "user.read",
+  USER_CREATE: "user.create",
+  USER_UPDATE: "user.update",
+  USER_DELETE: "user.delete",
 
-  USER_PERMISSION_MANAGE: "user.permission.manage", // Kullanıcı özel yetkilerini yönetme
-  USER_ROLE_MANAGE: "user.role.manage", // Kullanıcı rolünü değiştirme
-  USER_SUPER_ADMIN_MANAGE: "user.super_admin.manage", // Süper admin atama / kaldırma
+  USER_PERMISSION_MANAGE: "user.permission.manage",
+  USER_ROLE_MANAGE: "user.role.manage",
+  USER_SUPER_ADMIN_MANAGE: "user.super_admin.manage",
+
+  // DEPARTMAN YÖNETİMİ
+
+  DEPARTMENT_READ: "department.read",
+  DEPARTMENT_CREATE: "department.create",
+  DEPARTMENT_UPDATE: "department.update",
+  DEPARTMENT_DELETE: "department.delete",
 
   // PERSONEL YÖNETİMİ
 
-  EMPLOYEE_READ: "employee.read", // Personel görüntüleme
-  EMPLOYEE_CREATE: "employee.create", // Personel oluşturma
-  EMPLOYEE_UPDATE: "employee.update", // Personel güncelleme
-  EMPLOYEE_DELETE: "employee.delete", // Personel silme / pasife alma
+  EMPLOYEE_READ: "employee.read",
+  EMPLOYEE_CREATE: "employee.create",
+  EMPLOYEE_UPDATE: "employee.update",
+  EMPLOYEE_DELETE: "employee.delete",
+
+  // DOKÜMAN YÖNETİMİ
+
+  DOCUMENT_READ: "document.read",
+  DOCUMENT_CREATE: "document.create",
+  DOCUMENT_DELETE: "document.delete",
+
+  // ONAY YÖNETİMİ
+
+  APPROVAL_READ: "approval.read",
+  APPROVAL_CREATE: "approval.create",
+  APPROVAL_DECIDE: "approval.decide",
+  APPROVAL_CANCEL: "approval.cancel",
+
+  // ATAMA YÖNETİMİ
+
+  ASSIGNMENT_READ: "assignment.read",
+  ASSIGNMENT_CREATE: "assignment.create",
+  ASSIGNMENT_UPDATE: "assignment.update",
+  ASSIGNMENT_DELETE: "assignment.delete",
 
   // TEDARİKÇİ YÖNETİMİ
 
-  SUPPLIER_READ: "supplier.read", // Tedarikçi görüntüleme
-  SUPPLIER_CREATE: "supplier.create", // Tedarikçi oluşturma
-  SUPPLIER_UPDATE: "supplier.update", // Tedarikçi güncelleme
-  SUPPLIER_DELETE: "supplier.delete", // Tedarikçi silme / pasife alma
+  SUPPLIER_READ: "supplier.read",
+  SUPPLIER_CREATE: "supplier.create",
+  SUPPLIER_UPDATE: "supplier.update",
+  SUPPLIER_DELETE: "supplier.delete",
 
   // ÜRETİM
 
-  PRODUCTION_READ: "production.read", // Üretim kayıtlarını görüntüleme
-  PRODUCTION_CREATE: "production.create", // Üretim kaydı oluşturma
-  PRODUCTION_UPDATE: "production.update", // Üretim kaydı güncelleme
-  PRODUCTION_DELETE: "production.delete", // Üretim kaydı silme
-  PRODUCTION_APPROVE: "production.approve", // Üretim onaylama
+  PRODUCTION_READ: "production.read",
+  PRODUCTION_CREATE: "production.create",
+  PRODUCTION_UPDATE: "production.update",
+  PRODUCTION_DELETE: "production.delete",
+  PRODUCTION_APPROVE: "production.approve",
 
   // PLANLAMA
 
-  PLANNING_READ: "planning.read", // Planlama kayıtlarını görüntüleme
-  PLANNING_CREATE: "planning.create", // Plan oluşturma
-  PLANNING_UPDATE: "planning.update", // Plan güncelleme
-  PLANNING_DELETE: "planning.delete", // Plan silme
-  PLANNING_APPROVE: "planning.approve", // Plan onaylama
+  PLANNING_READ: "planning.read",
+  PLANNING_CREATE: "planning.create",
+  PLANNING_UPDATE: "planning.update",
+  PLANNING_DELETE: "planning.delete",
+  PLANNING_APPROVE: "planning.approve",
 
   // BAKIM
 
-  MAINTENANCE_READ: "maintenance.read", // Bakım kayıtlarını görüntüleme
-  MAINTENANCE_CREATE: "maintenance.create", // Bakım kaydı oluşturma
-  MAINTENANCE_UPDATE: "maintenance.update", // Bakım kaydı güncelleme
-  MAINTENANCE_DELETE: "maintenance.delete", // Bakım kaydı silme
+  MAINTENANCE_READ: "maintenance.read",
+  MAINTENANCE_CREATE: "maintenance.create",
+  MAINTENANCE_UPDATE: "maintenance.update",
+  MAINTENANCE_DELETE: "maintenance.delete",
 
   // KALİTE
 
-  QUALITY_READ: "quality.read", // Kalite kayıtlarını görüntüleme
-  QUALITY_CREATE: "quality.create", // Kalite kaydı oluşturma
-  QUALITY_UPDATE: "quality.update", // Kalite kaydı güncelleme
-  QUALITY_DELETE: "quality.delete", // Kalite kaydı silme
-  QUALITY_APPROVE: "quality.approve", // Kalite onaylama
+  QUALITY_READ: "quality.read",
+  QUALITY_CREATE: "quality.create",
+  QUALITY_UPDATE: "quality.update",
+  QUALITY_DELETE: "quality.delete",
+  QUALITY_APPROVE: "quality.approve",
 
   // SEVKİYAT
 
-  SHIPPING_READ: "shipping.read", // Sevkiyat kayıtlarını görüntüleme
-  SHIPPING_CREATE: "shipping.create", // Sevkiyat kaydı oluşturma
-  SHIPPING_UPDATE: "shipping.update", // Sevkiyat kaydı güncelleme
-  SHIPPING_DELETE: "shipping.delete", // Sevkiyat kaydı silme
+  SHIPPING_READ: "shipping.read",
+  SHIPPING_CREATE: "shipping.create",
+  SHIPPING_UPDATE: "shipping.update",
+  SHIPPING_DELETE: "shipping.delete",
 
   // SATIŞ
 
-  SALES_READ: "sales.read", // Satış kayıtlarını görüntüleme
-  SALES_CREATE: "sales.create", // Satış kaydı oluşturma
-  SALES_UPDATE: "sales.update", // Satış kaydı güncelleme
-  SALES_DELETE: "sales.delete", // Satış kaydı silme
-  SALES_APPROVE: "sales.approve", // Satış onaylama
+  SALES_READ: "sales.read",
+  SALES_CREATE: "sales.create",
+  SALES_UPDATE: "sales.update",
+  SALES_DELETE: "sales.delete",
+  SALES_APPROVE: "sales.approve",
 
   // SATINALMA
 
-  PURCHASE_READ: "purchase.read", // Satınalma kayıtlarını görüntüleme
-  PURCHASE_CREATE: "purchase.create", // Satınalma oluşturma
-  PURCHASE_UPDATE: "purchase.update", // Satınalma güncelleme
-  PURCHASE_DELETE: "purchase.delete", // Satınalma silme
-  PURCHASE_APPROVE: "purchase.approve", // Satınalma onaylama
+  PURCHASE_READ: "purchase.read",
+  PURCHASE_CREATE: "purchase.create",
+  PURCHASE_UPDATE: "purchase.update",
+  PURCHASE_DELETE: "purchase.delete",
+  PURCHASE_APPROVE: "purchase.approve",
 
   // HAMMADDE SATINALMA
 
-  RAW_MATERIAL_PURCHASE_READ: "raw_material_purchase.read", // Hammadde satınalma görüntüleme
-  RAW_MATERIAL_PURCHASE_CREATE: "raw_material_purchase.create", // Hammadde satınalma oluşturma
-  RAW_MATERIAL_PURCHASE_UPDATE: "raw_material_purchase.update", // Hammadde satınalma güncelleme
-  RAW_MATERIAL_PURCHASE_DELETE: "raw_material_purchase.delete", // Hammadde satınalma silme
-  RAW_MATERIAL_PURCHASE_APPROVE: "raw_material_purchase.approve", // Hammadde satınalma onaylama
+  RAW_MATERIAL_PURCHASE_READ: "raw_material_purchase.read",
+  RAW_MATERIAL_PURCHASE_CREATE: "raw_material_purchase.create",
+  RAW_MATERIAL_PURCHASE_UPDATE: "raw_material_purchase.update",
+  RAW_MATERIAL_PURCHASE_DELETE: "raw_material_purchase.delete",
+  RAW_MATERIAL_PURCHASE_APPROVE: "raw_material_purchase.approve",
 
-  RAW_MATERIAL_PURCHASE_SETTINGS_READ: "raw_material_purchase_settings.read", // Hammadde satınalma ayarlarını görüntüleme
-  RAW_MATERIAL_PURCHASE_SETTINGS_UPDATE: "raw_material_purchase_settings.update", // Hammadde satınalma ayarlarını güncelleme
+  RAW_MATERIAL_PURCHASE_SETTINGS_READ: "raw_material_purchase_settings.read",
+  RAW_MATERIAL_PURCHASE_SETTINGS_UPDATE: "raw_material_purchase_settings.update",
 
   // HAMMADDE / ÜRÜN KARTLARI
 
-  RAW_MATERIAL_READ: "raw_material.read", // Hammadde/ürün görüntüleme
-  RAW_MATERIAL_CREATE: "raw_material.create", // Hammadde/ürün oluşturma
-  RAW_MATERIAL_UPDATE: "raw_material.update", // Hammadde/ürün güncelleme
-  RAW_MATERIAL_DELETE: "raw_material.delete", // Hammadde/ürün silme
-  RAW_MATERIAL_APPROVE: "raw_material.approve", // Hammadde/ürün onaylama
+  RAW_MATERIAL_READ: "raw_material.read",
+  RAW_MATERIAL_CREATE: "raw_material.create",
+  RAW_MATERIAL_UPDATE: "raw_material.update",
+  RAW_MATERIAL_DELETE: "raw_material.delete",
+  RAW_MATERIAL_APPROVE: "raw_material.approve",
 
   // MUHASEBE
 
-  ACCOUNTING_READ: "accounting.read", // Muhasebe kayıtlarını görüntüleme
-  ACCOUNTING_CREATE: "accounting.create", // Muhasebe kaydı oluşturma
-  ACCOUNTING_UPDATE: "accounting.update", // Muhasebe kaydı güncelleme
-  ACCOUNTING_DELETE: "accounting.delete", // Muhasebe kaydı silme
-  ACCOUNTING_APPROVE: "accounting.approve", // Muhasebe onaylama
+  ACCOUNTING_READ: "accounting.read",
+  ACCOUNTING_CREATE: "accounting.create",
+  ACCOUNTING_UPDATE: "accounting.update",
+  ACCOUNTING_DELETE: "accounting.delete",
+  ACCOUNTING_APPROVE: "accounting.approve",
 
   // FİNANS
 
-  FINANCE_READ: "finance.read", // Finans kayıtlarını görüntüleme
-  FINANCE_CREATE: "finance.create", // Finans kaydı oluşturma
-  FINANCE_UPDATE: "finance.update", // Finans kaydı güncelleme
-  FINANCE_DELETE: "finance.delete", // Finans kaydı silme
-  FINANCE_APPROVE: "finance.approve", // Finans onaylama
+  FINANCE_READ: "finance.read",
+  FINANCE_CREATE: "finance.create",
+  FINANCE_UPDATE: "finance.update",
+  FINANCE_DELETE: "finance.delete",
+  FINANCE_APPROVE: "finance.approve",
 
   // DIŞ TİCARET
 
-  FOREIGN_TRADE_READ: "foreign_trade.read", // Dış ticaret kayıtlarını görüntüleme
-  FOREIGN_TRADE_CREATE: "foreign_trade.create", // Dış ticaret kaydı oluşturma
-  FOREIGN_TRADE_UPDATE: "foreign_trade.update", // Dış ticaret kaydı güncelleme
-  FOREIGN_TRADE_DELETE: "foreign_trade.delete", // Dış ticaret kaydı silme
-  FOREIGN_TRADE_APPROVE: "foreign_trade.approve", // Dış ticaret onaylama
+  FOREIGN_TRADE_READ: "foreign_trade.read",
+  FOREIGN_TRADE_CREATE: "foreign_trade.create",
+  FOREIGN_TRADE_UPDATE: "foreign_trade.update",
+  FOREIGN_TRADE_DELETE: "foreign_trade.delete",
+  FOREIGN_TRADE_APPROVE: "foreign_trade.approve",
 
   // İTHALAT
 
-  IMPORT_READ: "import.read", // İthalat kayıtlarını görüntüleme
-  IMPORT_CREATE: "import.create", // İthalat kaydı oluşturma
-  IMPORT_UPDATE: "import.update", // İthalat kaydı güncelleme
-  IMPORT_DELETE: "import.delete", // İthalat kaydı silme
+  IMPORT_READ: "import.read",
+  IMPORT_CREATE: "import.create",
+  IMPORT_UPDATE: "import.update",
+  IMPORT_DELETE: "import.delete",
 
   // İHRACAT
 
-  EXPORT_READ: "export.read", // İhracat kayıtlarını görüntüleme
-  EXPORT_CREATE: "export.create", // İhracat kaydı oluşturma
-  EXPORT_UPDATE: "export.update", // İhracat kaydı güncelleme
-  EXPORT_DELETE: "export.delete", // İhracat kaydı silme
+  EXPORT_READ: "export.read",
+  EXPORT_CREATE: "export.create",
+  EXPORT_UPDATE: "export.update",
+  EXPORT_DELETE: "export.delete",
 
   // İSG
 
-  OHS_READ: "ohs.read", // İSG kayıtlarını görüntüleme
-  OHS_CREATE: "ohs.create", // İSG kaydı oluşturma
-  OHS_UPDATE: "ohs.update", // İSG kaydı güncelleme
-  OHS_DELETE: "ohs.delete", // İSG kaydı silme
+  OHS_READ: "ohs.read",
+  OHS_CREATE: "ohs.create",
+  OHS_UPDATE: "ohs.update",
+  OHS_DELETE: "ohs.delete",
 
   // SİSTEM LOGLARI
 
-  SYSTEM_LOG_READ: "system_log.read", // Sistem loglarını görüntüleme
-  SYSTEM_LOG_DELETE: "system_log.delete", // Sistem loglarını temizleme
+  SYSTEM_LOG_READ: "system_log.read",
+  SYSTEM_LOG_DELETE: "system_log.delete",
 
   // AUDIT LOGLARI
 
-  AUDIT_LOG_READ: "audit_log.read", // Audit loglarını görüntüleme
-  AUDIT_LOG_DELETE: "audit_log.delete", // Audit loglarını temizleme
+  AUDIT_LOG_READ: "audit_log.read",
+  AUDIT_LOG_DELETE: "audit_log.delete",
 
   // SİSTEM SAĞLIĞI
 
-  SYSTEM_HEALTH_READ: "system_health.read", // Sistem sağlık durumunu görüntüleme
+  SYSTEM_HEALTH_READ: "system_health.read",
 };

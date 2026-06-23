@@ -1,72 +1,37 @@
 import * as service from "./document.service.js";
+import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { successResponse } from "../../../utils/apiResponse.js";
 
-export async function uploadDocument(req, res, next) {
-  try {
-    const data = await service.uploadDocumentService({
-      payload: req.body,
-      file: req.file,
-      userId: req.user?.id,
-    });
+export const uploadDocument = asyncHandler(async (req, res) => {
+  const data = await service.uploadDocumentService({
+    payload: req.body,
+    file: req.file,
+    userId: req.user?.id,
+  });
 
-    res.status(201).json({
-      success: true,
-      message: "Doküman yüklendi.",
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
+  return successResponse(res, data, "Doküman yüklendi.", 201);
+});
 
-export async function listDocuments(req, res, next) {
-  try {
-    const data = await service.listDocumentsService(req.query);
+export const listDocuments = asyncHandler(async (req, res) => {
+  const data = await service.listDocumentsService(req.query);
 
-    res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
+  return successResponse(res, data, "Dokümanlar getirildi.");
+});
 
-export async function getDocumentById(req, res, next) {
-  try {
-    const data = await service.getDocumentByIdService(req.params.id);
+export const getDocumentById = asyncHandler(async (req, res) => {
+  const data = await service.getDocumentByIdService(req.params.id);
 
-    res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
+  return successResponse(res, data, "Doküman getirildi.");
+});
 
-export async function getDocumentDownloadUrl(req, res, next) {
-  try {
-    const data = await service.getDocumentDownloadUrlService(req.params.id);
+export const getDocumentDownloadUrl = asyncHandler(async (req, res) => {
+  const data = await service.getDocumentDownloadUrlService(req.params.id);
 
-    res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
+  return successResponse(res, data, "Doküman indirme bağlantısı getirildi.");
+});
 
-export async function deleteDocument(req, res, next) {
-  try {
-    const data = await service.deactivateDocumentService(req.params.id);
+export const deleteDocument = asyncHandler(async (req, res) => {
+  const data = await service.deactivateDocumentService(req.params.id);
 
-    res.json({
-      success: true,
-      message: "Doküman pasife alındı.",
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
+  return successResponse(res, data, "Doküman pasife alındı.");
+});

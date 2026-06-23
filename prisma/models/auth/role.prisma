@@ -1,11 +1,12 @@
 model Role {
-  id            String @id @default(cuid()) // Rol benzersiz id'si
+  id            String @id @default(cuid())
 
-  name          String @unique // Rol adı: ADMIN, HR, PURCHASING, QUALITY, MAINTENANCE vb.
-  description   String? // Rolün açıklaması ve kullanım amacı
+  name          String @unique
+  description   String?
 
-  users         User[] // Bu role atanmış kullanıcılar
+  users         User[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("Role")
 }

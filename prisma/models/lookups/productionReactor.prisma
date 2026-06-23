@@ -1,11 +1,9 @@
-model Unit {
-  id     Int @id
+model ProductionReactor {
+  id Int @id
 
-  code   String @unique
-  
-  name   String @unique
-
-  symbol String?
+  code String @unique
+  name String
+  sortOrder Int @default(0)
 
   isActive Boolean @default(true)
 
@@ -13,7 +11,6 @@ model Unit {
   updatedAt DateTime @updatedAt
 
   @@index([code])
-  @@index([name])
   @@index([isActive])
-  @@map("Lookup_Unit")
+  @@map("Production_Reactor")
 }

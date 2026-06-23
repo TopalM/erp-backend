@@ -1,20 +1,18 @@
 model City {
-  id            Int @id // Şehir id'si
+  id            Int @id
 
-  countryId     Int // Bağlı olduğu ülke id'si
+  countryId     Int
 
-  value         String // Şehir adı
+  value         String 
 
-  country       Country @relation(fields: [countryId], references: [id], onDelete: Restrict) // Bağlı olduğu ülke
+  country       Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
 
-  districts     District[] // Şehre bağlı ilçeler
-  taxOffices    TaxOffice[] // Şehre bağlı vergi daireleri
+  districts     District[]
+  
+  taxOffices    TaxOffice[]
 
-  employees     Employee[] // Bu şehirde kayıtlı çalışanlar
-
-  suppliers     Supplier[]
+  employees     Employee[]
 
   @@index([countryId])
-
-  @@map("cities")
+  @@map("Lookup_City")
 }

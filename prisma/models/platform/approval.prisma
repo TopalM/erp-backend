@@ -7,15 +7,15 @@ enum ApprovalModule {
   MAINTENANCE
   SALES
   IMPORT
-  ACCOUNTING
   UTILITY
   SYSTEM
 }
 
 enum ApprovalEntityType {
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
-  PURCHASE_INVOICE
+  PURCHASE_RECEIPT
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -84,5 +84,5 @@ model Approval {
   @@index([requestedAt])
   @@index([decidedAt])
 
-  @@map("approvals")
+  @@map("Approval")
 }

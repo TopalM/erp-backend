@@ -1,14 +1,13 @@
 model BloodType {
-  id          String @id @default(cuid()) // Kan grubu benzersiz id'si
+  id          Int @id
 
-  legacyId    Int? @unique // Eski sistemden gelen id
+  name        String @unique
 
-  name        String @unique // Kan grubu adı (A+, A-, B+, B-, AB+, AB-, 0+, 0-)
+  isActive    Boolean @default(true)
 
-  isActive    Boolean @default(true) // Kullanım durumu
+  employees   Employee[]
 
-  employees   Employee[] // Bu kan grubuna sahip çalışanlar
-
-  createdAt   DateTime @default(now()) // Oluşturulma tarihi
-  updatedAt   DateTime @updatedAt // Son güncellenme tarihi
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("Lookup_BloodType")
 }

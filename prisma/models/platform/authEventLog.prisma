@@ -1,42 +1,43 @@
 enum AuthEventType {
-  REGISTER_SUCCESS              // Kullanıcı başarıyla kayıt oldu
+  REGISTER_SUCCESS
 
-  LOGIN_SUCCESS                 // Başarılı giriş yapıldı
-  LOGIN_FAILED                  // Başarısız giriş denemesi
-  LOGOUT                        // Kullanıcı sistemden çıkış yaptı
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
 
-  ACCOUNT_LOCKED                // Çok fazla başarısız giriş nedeniyle hesap kilitlendi
+  ACCOUNT_LOCKED
 
-  PASSWORD_RESET_REQUESTED      // Şifre sıfırlama talebi oluşturuldu
-  PASSWORD_RESET_COMPLETED      // Şifre sıfırlama işlemi tamamlandı
-  PASSWORD_CHANGED              // Kullanıcı mevcut şifresini değiştirdi
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
 
-  EMAIL_VERIFICATION_SENT       // E-posta doğrulama bağlantısı gönderildi
-  EMAIL_VERIFICATION_FAILED     // Geçersiz veya süresi geçmiş doğrulama denemesi yapıldı
-  EMAIL_VERIFIED                // E-posta başarıyla doğrulandı
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFICATION_FAILED
+  EMAIL_VERIFIED
 }
 
 model AuthEventLog {
-  id            String @id @default(cuid()) // Auth log kaydı benzersiz id'si
+  id            String @id @default(cuid())
 
-  userId        String? // İşlemle ilişkili kullanıcı id'si
-  email         String? // İşlem sırasında kullanılan e-posta adresi
+  userId        String?
+  email         String?
 
-  event         AuthEventType // Gerçekleşen kimlik doğrulama olayı
+  event         AuthEventType
 
-  ipAddress     String? // İşlemin yapıldığı IP adresi
-  userAgent     String? // Tarayıcı, işletim sistemi ve cihaz bilgisi
+  ipAddress     String?
+  userAgent     String?
 
-  success       Boolean @default(false) // İşlem başarılı mı?
+  success       Boolean @default(false)
 
-  message       String? // Hata mesajı veya açıklama
+  message       String?
 
-  createdAt     DateTime @default(now()) // Log oluşturulma tarihi
+  createdAt     DateTime @default(now())
 
-  user          User? @relation(fields: [userId], references: [id], onDelete: SetNull) // İşlemle ilişkili kullanıcı
+  user          User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([email])
   @@index([event])
   @@index([createdAt])
+  @@map("AuthEventLog")
 }

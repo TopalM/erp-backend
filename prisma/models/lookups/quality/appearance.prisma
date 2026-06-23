@@ -1,11 +1,12 @@
-model ProductionYear {
-  id       Int @id
-  
-  year     Int @unique
+model QualityAppearance {
+  id Int @id
+
+  name String @unique
 
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("Lookup_ProductionYear")
+
+  @@map("Quality_Appearance")
 }

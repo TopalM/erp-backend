@@ -1,38 +1,40 @@
 enum PermissionEffect {
-  ALLOW // Kullanıcıya bu yetki açıkça verildi
-  DENY  // Kullanıcı için bu yetki açıkça engellendi
+  ALLOW
+  DENY
 }
 
 model Permission {
-  id String @id @default(cuid()) // Yetki benzersiz id'si
+  id String @id @default(cuid())
 
-  code String @unique // Sistem içinde kullanılan benzersiz yetki kodu: supplier.read, user.create vb.
-  name String // Kullanıcıya gösterilecek yetki adı
+  code String @unique
+  name String
 
-  description String? // Yetkinin açıklaması
+  description String?
 
-  userPermissions UserPermission[] // Bu yetkiye sahip kullanıcı-yetki ilişkileri
+  userPermissions UserPermission[]
 
-  createdAt DateTime @default(now()) // Yetki oluşturulma tarihi
-  updatedAt DateTime @updatedAt // Yetki son güncellenme tarihi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("Permission")
 }
 
 model UserPermission {
-  id String @id @default(cuid()) // Kullanıcı-yetki ilişki id'si
+  id String @id @default(cuid())
 
-  userId String // Yetki verilen kullanıcı id'si
-  permissionId String // Verilen yetki id'si
+  userId String
+  permissionId String
 
-  effect PermissionEffect @default(ALLOW) // Yetki etkisi: ALLOW verilmiş yetki, DENY engellenmiş yetki
+  effect PermissionEffect @default(ALLOW)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // Yetki verilen kullanıcı
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade) // Kullanıcıya verilen yetki
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) // Yetki atanma tarihi
-  updatedAt DateTime @updatedAt // Yetki ilişkisi son güncellenme tarihi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, permissionId])
   @@index([userId])
   @@index([permissionId])
   @@index([effect])
+  @@map("UserPermission")
 }

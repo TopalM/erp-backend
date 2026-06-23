@@ -1,7 +1,5 @@
 model RawMaterialCategory {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id   Int @id
 
   name String @unique
 
@@ -9,4 +7,5 @@ model RawMaterialCategory {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("Quality_RawMaterialCategory")
 }

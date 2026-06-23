@@ -7,15 +7,15 @@ enum AssignmentModule {
   MAINTENANCE
   SALES
   IMPORT
-  ACCOUNTING
   UTILITY
   SYSTEM
 }
 
 enum AssignmentEntityType {
-  PURCHASE_INVOICE
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
+  PURCHASE_RECEIPT
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -53,31 +53,32 @@ enum AssignmentRole {
 }
 
 model Assignment {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  module      AssignmentModule
-  entityType  AssignmentEntityType
-  entityId    String
+  module     AssignmentModule
+  entityType AssignmentEntityType
+  entityId   String
 
-  userId      String
-  user        User @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  role        AssignmentRole @default(RESPONSIBLE)
+  role AssignmentRole @default(RESPONSIBLE)
 
-  note        String?
+  note String?
 
   createdById String?
   createdBy User? @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([module, entityType, entityId, userId, role])
+
   @@index([module])
   @@index([entityType, entityId])
   @@index([userId])
   @@index([role])
   @@index([createdById])
 
-  @@map("assignments")
+  @@map("Assignment")
 }

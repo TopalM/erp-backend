@@ -1,7 +1,5 @@
 model RawMaterialAnalysisParameter {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id        Int @id
 
   name      String
   fieldKey  String @unique
@@ -19,15 +17,14 @@ model RawMaterialAnalysisParameter {
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
+  @@map("Quality_RawMaterialAnalysisParameter")
 }
 
 model RawMaterialAnalysisOption {
-  id String @id @default(cuid())
+  id Int @id
 
-  legacyId Int?
-
-  parameterId String
-  parameter   RawMaterialAnalysisParameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  parameterId Int
+  parameter RawMaterialAnalysisParameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
 
   value String
 
@@ -37,6 +34,6 @@ model RawMaterialAnalysisOption {
   updatedAt DateTime @updatedAt
 
   @@unique([parameterId, value])
-  @@unique([parameterId, legacyId])
   @@index([parameterId])
+  @@map("Quality_RawMaterialAnalysisOption")
 }

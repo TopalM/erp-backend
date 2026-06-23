@@ -1,11 +1,11 @@
 model TankFarm {
-  id String @id @default(cuid())
-
-  legacyId Int? @unique
+  id       Int @id
+  
   name     String @unique
 
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("Lookup_TankFarm")
 }

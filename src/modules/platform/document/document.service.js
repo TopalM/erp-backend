@@ -1,9 +1,9 @@
 import path from "path";
 
 import { prisma } from "../../../database/prisma.client.js";
+import { AppError } from "../../../utils/appError.js";
 
 import { buildStoragePath, ensureStorageFolder, uploadFile, getDownloadUrl } from "../storage/index.js";
-
 import { cleanupLocalFile } from "../storage/storage.cleanup.js";
 
 function normalizeStoragePart(value) {
@@ -18,20 +18,19 @@ function normalizeStoragePart(value) {
 
 function createStoredFileName(file) {
   const extension = path.extname(file.originalname || "").toLowerCase();
+
   const baseName = path
     .basename(file.originalname || "document", extension)
     .replace(/[^\wğüşöçıİĞÜŞÖÇ.-]+/gi, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return `${Date.now()}-${Math.round(Math.random() * 1e9)}-${baseName}${extension}`;
+  return `${Date.now()}-${Math.round(Math.random() * 1e9)}-${baseName || "document"}${extension}`;
 }
 
 export async function uploadDocumentService({ payload, file, userId }) {
   if (!file) {
-    const error = new Error("Dosya zorunludur.");
-    error.statusCode = 400;
-    throw error;
+    throw new AppError("Dosya zorunludur.", 400);
   }
 
   const moduleFolder = normalizeStoragePart(payload.module);
@@ -41,14 +40,12 @@ export async function uploadDocumentService({ payload, file, userId }) {
   const storedFileName = createStoredFileName(file);
   const fileExtension = path.extname(file.originalname || "").toLowerCase();
 
-  let storagePath = null;
-
   try {
     await ensureStorageFolder(moduleFolder);
     await ensureStorageFolder(moduleFolder, entityFolder);
     await ensureStorageFolder(moduleFolder, entityFolder, entityIdFolder);
 
-    storagePath = buildStoragePath(moduleFolder, entityFolder, entityIdFolder, storedFileName);
+    const storagePath = buildStoragePath(moduleFolder, entityFolder, entityIdFolder, storedFileName);
 
     const uploadResult = await uploadFile({
       localFilePath: file.path,
@@ -56,7 +53,7 @@ export async function uploadDocumentService({ payload, file, userId }) {
       overwrite: true,
     });
 
-    const document = await prisma.document.create({
+    return prisma.document.create({
       data: {
         module: payload.module,
         entityType: payload.entityType,
@@ -76,17 +73,11 @@ export async function uploadDocumentService({ payload, file, userId }) {
         sizeBytes: file.size || null,
 
         storageProvider: uploadResult.provider || null,
-
         uploadedById: userId || null,
       },
     });
-
+  } finally {
     await cleanupLocalFile(file.path);
-
-    return document;
-  } catch (error) {
-    await cleanupLocalFile(file.path);
-    throw error;
   }
 }
 
@@ -137,9 +128,7 @@ export async function getDocumentByIdService(id) {
   });
 
   if (!document) {
-    const error = new Error("Doküman bulunamadı.");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError("Doküman bulunamadı.", 404);
   }
 
   return document;

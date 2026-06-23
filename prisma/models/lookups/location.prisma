@@ -1,7 +1,5 @@
 model Location {
-  id          String @id @default(cuid())
-
-  legacyId    Int? @unique
+  id          Int @id
 
   name        String @unique
 
@@ -9,10 +7,7 @@ model Location {
 
   employees   Employee[]
 
-  equipments  Equipment[]
-
-  maintenances Maintenance[]
-
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@map("Lookup_Location")
 }

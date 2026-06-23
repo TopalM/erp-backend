@@ -1,29 +1,11 @@
 import { prisma } from "../../database/prisma.client.js";
 
-// Servis içinde kontrollü hata üretir.
-// Express error middleware tarafından yakalanır.
 const createError = (message, statusCode = 400) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 };
 
-// İlgili model için sıradaki legacyId değerini üretir.
-// legacyId alanı olmayan modellerde null döner.
-const getNextLegacyId = async (config) => {
-  if (config.hasLegacyId === false) return null;
-
-  const result = await prisma[config.model].aggregate({
-    _max: {
-      legacyId: true,
-    },
-  });
-
-  return Number(result?._max?.legacyId || 0) + 1;
-};
-
-// Numeric id kullanan master tablolarda yeni kayıt için sıradaki id değerini üretir.
-// Country, City, District gibi eski numeric id kullanan tablolarda kullanılır.
 const getNextNumberId = async (model) => {
   const last = await prisma[model].findFirst({
     orderBy: { id: "desc" },
@@ -33,7 +15,6 @@ const getNextNumberId = async (model) => {
   return Number(last?.id || 0) + 1;
 };
 
-// Sistemde kullanılan tüm bağımsız lookup grupları.
 const lookupGroups = {
   departments: {
     name: "Departmanlar",
@@ -44,51 +25,51 @@ const lookupGroups = {
     extraFields: ["name"],
     requiredExtraFields: ["name"],
     orderBy: { name: "asc" },
-    hasLegacyId: false,
   },
 
   productionReactors: {
     name: "Reaktörler",
     model: "productionReactor",
-    idType: "string",
+    idType: "number",
     valueField: "code",
     labelField: "name",
     extraFields: ["name", "sortOrder"],
-    requiredExtraFields: ["name"],
+    requiredExtraFields: ["name", "sortOrder"],
+    numericFields: ["sortOrder"],
     activeField: "isActive",
     orderBy: { sortOrder: "asc" },
-    hasLegacyId: false,
   },
 
   bloodTypes: {
     name: "Kan Grupları",
     model: "bloodType",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
     orderBy: { name: "asc" },
   },
 
- countries: {
-  name: "Ülkeler",
-  model: "country",
-  idType: "number",
-  valueField: "value",
-  labelField: "value",
-  extraFields: ["iso2", "phoneCode"],
-  orderBy: { value: "asc" },
-  large: true,
-},
+  countries: {
+    name: "Ülkeler",
+    model: "country",
+    idType: "number",
+    valueField: "value",
+    labelField: "value",
+    extraFields: ["iso2", "phoneCode"],
+    orderBy: { value: "asc" },
+    large: true,
+  },
 
   subRegions: {
     name: "Bölgeler",
     model: "subRegion",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     extraFields: ["countryId"],
     requiredExtraFields: ["countryId"],
+    numericFields: ["countryId"],
     activeField: "isActive",
     orderBy: { name: "asc" },
   },
@@ -101,6 +82,7 @@ const lookupGroups = {
     labelField: "value",
     extraFields: ["countryId"],
     requiredExtraFields: ["countryId"],
+    numericFields: ["countryId"],
     orderBy: { value: "asc" },
     large: true,
   },
@@ -113,6 +95,7 @@ const lookupGroups = {
     labelField: "value",
     extraFields: ["cityId"],
     requiredExtraFields: ["cityId"],
+    numericFields: ["cityId"],
     orderBy: { value: "asc" },
     large: true,
   },
@@ -120,11 +103,12 @@ const lookupGroups = {
   taxOffices: {
     name: "Vergi Daireleri",
     model: "taxOffice",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     extraFields: ["cityId"],
     requiredExtraFields: ["cityId"],
+    numericFields: ["cityId"],
     activeField: "isActive",
     orderBy: { name: "asc" },
     large: true,
@@ -133,7 +117,7 @@ const lookupGroups = {
   currencies: {
     name: "Para Birimleri",
     model: "currency",
-    idType: "string",
+    idType: "number",
     valueField: "code",
     labelField: "name",
     activeField: "isActive",
@@ -143,7 +127,7 @@ const lookupGroups = {
   faultTypes: {
     name: "Arıza Türleri",
     model: "faultType",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -153,7 +137,7 @@ const lookupGroups = {
   locations: {
     name: "Lokasyonlar",
     model: "location",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -163,7 +147,7 @@ const lookupGroups = {
   machineTypes: {
     name: "Makine Türleri",
     model: "machineType",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -173,21 +157,12 @@ const lookupGroups = {
   paymentTerms: {
     name: "Ödeme Vadeleri",
     model: "paymentTerm",
-    idType: "string",
-    valueField: "code",
+    idType: "number",
+    valueField: "name",
     labelField: "name",
-    extraFields: ["scope", "days", "requiresDay"],
-    activeField: "isActive",
-    orderBy: { name: "asc" },
-  },
-
-  rawMaterialPaymentTerms: {
-    name: "Hammadde Ödeme Vadeleri",
-    model: "paymentTermRawMaterial",
-    idType: "string",
-    valueField: "code",
-    labelField: "name",
-    extraFields: ["scope", "days", "requiresDay"],
+    extraFields: ["code", "scope", "days", "requiresDay"],
+    numericFields: ["days"],
+    booleanFields: ["requiresDay"],
     activeField: "isActive",
     orderBy: { name: "asc" },
   },
@@ -195,7 +170,7 @@ const lookupGroups = {
   placesOfUse: {
     name: "Kullanım Yerleri",
     model: "placeOfUse",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -205,9 +180,10 @@ const lookupGroups = {
   productionYears: {
     name: "Üretim Yılları",
     model: "productionYear",
-    idType: "string",
+    idType: "number",
     valueField: "year",
     labelField: "year",
+    numericFields: ["year"],
     activeField: "isActive",
     orderBy: { year: "asc" },
   },
@@ -215,27 +191,27 @@ const lookupGroups = {
   purchasedTypes: {
     name: "Satın Alınanlar",
     model: "purchased",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
     orderBy: { name: "asc" },
   },
 
- purchaseReasons: {
-  name: "Satınalma Nedenleri",
-  model: "purchaseReason",
-  idType: "string",
-  valueField: "name",
-  labelField: "name",
-  activeField: "isActive",
-  orderBy: { name: "asc" },
-},
+  purchaseReasons: {
+    name: "Satınalma Nedenleri",
+    model: "purchaseReason",
+    idType: "number",
+    valueField: "name",
+    labelField: "name",
+    activeField: "isActive",
+    orderBy: { name: "asc" },
+  },
 
   reasonFailures: {
     name: "Arıza Nedenleri",
-    model: "reasonFailure",
-    idType: "string",
+    model: "failureReason",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -245,9 +221,10 @@ const lookupGroups = {
   supplierPoints: {
     name: "Tedarikçi Puanları",
     model: "supplierPoint",
-    idType: "string",
+    idType: "number",
     valueField: "value",
     labelField: "label",
+    numericFields: ["value"],
     activeField: "isActive",
     orderBy: { value: "asc" },
   },
@@ -255,7 +232,7 @@ const lookupGroups = {
   tankFarms: {
     name: "Tank Sahaları",
     model: "tankFarm",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -265,17 +242,18 @@ const lookupGroups = {
   taxRatios: {
     name: "Vergi Oranları",
     model: "taxRatio",
-    idType: "string",
-    valueField: "name",
+    idType: "number",
+    valueField: "value",
     labelField: "name",
+    numericFields: ["value"],
     activeField: "isActive",
-    orderBy: { name: "asc" },
+    orderBy: { value: "asc" },
   },
 
   transports: {
     name: "Nakliye Türleri",
     model: "transportType",
-    idType: "string",
+    idType: "number",
     valueField: "name",
     labelField: "name",
     activeField: "isActive",
@@ -283,7 +261,6 @@ const lookupGroups = {
   },
 };
 
-// Verilen groupKey değerine ait lookup config bilgisini döndürür.
 const getConfig = (groupKey) => {
   const config = lookupGroups[groupKey];
 
@@ -298,13 +275,11 @@ const getConfig = (groupKey) => {
   return config;
 };
 
-// Numeric id kullanan lookup modellerinde id değerini Number'a çevirir.
 const parseId = (config, id) => {
   if (config.idType === "number") return Number(id);
   return id;
 };
 
-// Frontend'den gelen payload içindeki extra alanlarını okur.
 const getPayloadValue = (payload, field) => {
   if (payload?.extra && Object.prototype.hasOwnProperty.call(payload.extra, field)) {
     return payload.extra[field];
@@ -313,22 +288,26 @@ const getPayloadValue = (payload, field) => {
   return payload?.[field];
 };
 
-// Numeric tutulması gereken alanları Number tipine çevirir.
-const castValue = (field, value) => {
+const castBoolean = (value) => {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return Boolean(value);
+};
+
+const castValue = (config, field, value) => {
   if (value === undefined || value === null || value === "") return undefined;
 
-if (["countryId", "cityId", "sortOrder", "days", "year"].includes(field)) {
-  return Number(value);
-}
+  if ((config.numericFields || []).includes(field)) {
+    return Number(value);
+  }
 
-  if (["requiresDay", "isActive"].includes(field)) {
-    return Boolean(value);
+  if ((config.booleanFields || []).includes(field) || field === "isActive") {
+    return castBoolean(value);
   }
 
   return value;
 };
 
-// Prisma modelinden gelen kaydı frontend'in beklediği ortak lookup formatına çevirir.
 const normalizeRow = (groupKey, config, row) => {
   const extra = {};
 
@@ -336,7 +315,8 @@ const normalizeRow = (groupKey, config, row) => {
     extra[field] = row[field] ?? null;
   }
 
-  const isActive = config.activeField ? Boolean(row[config.activeField]) : config.deletedAtField ? !row[config.deletedAtField] : true;
+  const rawValue = row[config.valueField];
+  const rawLabel = row[config.labelField];
 
   return {
     id: row.id,
@@ -344,35 +324,34 @@ const normalizeRow = (groupKey, config, row) => {
     groupKey,
     source: "master",
     type: groupKey,
-    value: row[config.valueField],
-    label: row[config.labelField] || row[config.valueField],
-    legacyId: config.hasLegacyId === false ? null : (row.legacyId ?? null),
+    value: rawValue,
+    label: rawLabel || rawValue,
+    legacyId: null,
     extra,
-    isActive,
+    isActive: config.activeField ? Boolean(row[config.activeField]) : true,
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
   };
 };
 
-// Create/update işlemleri için Prisma data objesini hazırlar.
 const buildData = (config, payload, isCreate = false) => {
-  const value = payload.value?.toString().trim();
+  const rawValue = payload.value?.toString().trim();
 
-  if (!value) {
+  if (!rawValue) {
     throw createError("Değer zorunludur.");
   }
 
   const data = {
-    [config.valueField]: castValue(config.valueField, value),
+    [config.valueField]: castValue(config, config.valueField, rawValue),
   };
 
   if (config.labelField && config.labelField !== config.valueField) {
-    data[config.labelField] = payload.label?.toString().trim() || value;
+    data[config.labelField] = payload.label?.toString().trim() || rawValue;
   }
 
   for (const field of config.extraFields || []) {
     const valueFromPayload = getPayloadValue(payload, field);
-    const castedValue = castValue(field, valueFromPayload);
+    const castedValue = castValue(config, field, valueFromPayload);
 
     if (castedValue !== undefined) {
       data[field] = castedValue;
@@ -392,7 +371,6 @@ const buildData = (config, payload, isCreate = false) => {
   return data;
 };
 
-// Güncellenecek veya silinecek kaydın varlığını kontrol eder.
 const findRecordOrFail = async (config, id) => {
   const record = await prisma[config.model].findUnique({
     where: { id: parseId(config, id) },
@@ -406,16 +384,13 @@ const findRecordOrFail = async (config, id) => {
   return record;
 };
 
-// Belirli lookup grubunun kayıtlarını getirir.
 const getItemsByGroup = async (groupKey, query = {}) => {
   const config = getConfig(groupKey);
 
   const page = Math.max(Number(query.page || 1), 1);
-
   const defaultLimit = config.large ? 50 : 100;
   const maxLimit = config.large ? 200 : 500;
   const limit = Math.min(Math.max(Number(query.limit || defaultLimit), 1), maxLimit);
-
   const skip = (page - 1) * limit;
 
   const where = {};
@@ -428,20 +403,13 @@ const getItemsByGroup = async (groupKey, query = {}) => {
     where.countryId = Number(query.countryId);
   }
 
-if (query.cityId && (config.extraFields || []).includes("cityId")) {
-  where.cityId = Number(query.cityId);
-}
+  if (query.cityId && (config.extraFields || []).includes("cityId")) {
+    where.cityId = Number(query.cityId);
+  }
 
-if (query.scope && (config.extraFields || []).includes("scope")) {
-  where.scope = query.scope;
-}
-
-if (query.search?.trim()) {
-  where[config.labelField] = {
-    contains: query.search.trim(),
-    mode: "insensitive",
-  };
-}
+  if (query.scope && (config.extraFields || []).includes("scope")) {
+    where.scope = query.scope;
+  }
 
   if (query.search?.trim()) {
     where[config.labelField] = {
@@ -473,7 +441,6 @@ if (query.search?.trim()) {
   };
 };
 
-// Lookup Yönetimi ekranında gösterilecek tüm grupları döndürür.
 export const getLookupGroupsService = async () => {
   return Object.entries(lookupGroups)
     .filter(([, config]) => Boolean(prisma[config.model]))
@@ -486,12 +453,10 @@ export const getLookupGroupsService = async () => {
     .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 };
 
-// Belirli bir lookup grubunun kayıtlarını döndürür.
 export const getLookupGroupItemsService = async (groupKey, query = {}) => {
   return getItemsByGroup(groupKey, query);
 };
 
-// Yeni lookup kaydı oluşturur.
 export const createLookupGroupItemService = async (groupKey, payload) => {
   const config = getConfig(groupKey);
 
@@ -505,16 +470,11 @@ export const createLookupGroupItemService = async (groupKey, payload) => {
     data.id = await getNextNumberId(config.model);
   }
 
-  if (config.hasLegacyId !== false) {
-    data.legacyId = await getNextLegacyId(config);
-  }
-
   const row = await prisma[config.model].create({ data });
 
   return normalizeRow(groupKey, config, row);
 };
 
-// Mevcut lookup kaydını günceller.
 export const updateLookupGroupItemService = async (groupKey, id, payload) => {
   const config = getConfig(groupKey);
 
@@ -534,7 +494,6 @@ export const updateLookupGroupItemService = async (groupKey, id, payload) => {
   return normalizeRow(groupKey, config, row);
 };
 
-// Lookup kaydını siler veya pasife alır.
 export const deleteLookupGroupItemService = async (groupKey, id) => {
   const config = getConfig(groupKey);
 
@@ -553,15 +512,6 @@ export const deleteLookupGroupItemService = async (groupKey, id) => {
     return null;
   }
 
-  if (config.deletedAtField) {
-    await prisma[config.model].update({
-      where: { id: parseId(config, id) },
-      data: { [config.deletedAtField]: new Date() },
-    });
-
-    return null;
-  }
-
   await prisma[config.model].delete({
     where: { id: parseId(config, id) },
   });
@@ -569,8 +519,6 @@ export const deleteLookupGroupItemService = async (groupKey, id) => {
   return null;
 };
 
-// Tüm lookup gruplarını ve küçük lookup kayıtlarını tek response içinde döndürür.
-// large: true olan grupların kayıtları burada dönmez.
 export const getAllLookups = async () => {
   const groups = await getLookupGroupsService();
 
@@ -609,8 +557,19 @@ export const getCurrencies = (query) => getItemsByGroup("currencies", query);
 export const getFaultTypes = (query) => getItemsByGroup("faultTypes", query);
 export const getLocations = (query) => getItemsByGroup("locations", query);
 export const getMachineTypes = (query) => getItemsByGroup("machineTypes", query);
-export const getPaymentTerms = (query) => getItemsByGroup("paymentTerms", query);
-export const getRawMaterialPaymentTerms = (query) => getItemsByGroup("rawMaterialPaymentTerms", query);
+
+export const getPaymentTerms = (query = {}) =>
+  getItemsByGroup("paymentTerms", {
+    ...query,
+    scope: query.scope || "GENERAL",
+  });
+
+export const getRawMaterialPaymentTerms = (query = {}) =>
+  getItemsByGroup("paymentTerms", {
+    ...query,
+    scope: "RAW_MATERIAL",
+  });
+
 export const getPlacesOfUse = (query) => getItemsByGroup("placesOfUse", query);
 export const getProductionYears = (query) => getItemsByGroup("productionYears", query);
 export const getPurchasedTypes = (query) => getItemsByGroup("purchasedTypes", query);

@@ -12,9 +12,11 @@ enum DocumentModule {
 }
 
 enum DocumentEntityType {
-  PURCHASE_INVOICE
   PURCHASE_REQUEST
+  PURCHASE_QUOTATION
   PURCHASE_ORDER
+  PURCHASE_RECEIPT
+  VENDOR_INVOICE
 
   SUPPLIER
   SUPPLIER_DOCUMENT
@@ -40,6 +42,10 @@ enum DocumentEntityType {
 }
 
 enum DocumentType {
+  QUOTATION
+  PURCHASE_FORM
+  DELIVERY_NOTE
+  RECEIPT_DOCUMENT
   INVOICE
 
   ISO_9001
@@ -52,7 +58,6 @@ enum DocumentType {
   TDS
   ANALYSIS_REPORT
 
-  DELIVERY_NOTE
   PACKING_LIST
 
   MAINTENANCE_FORM
@@ -99,5 +104,5 @@ model Document {
   @@index([uploadedById])
   @@index([isActive])
 
-  @@map("documents")
+  @@map("Document")
 }

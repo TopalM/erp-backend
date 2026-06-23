@@ -3,21 +3,23 @@ import "dotenv/config";
 import app from "./app.js";
 
 import { connectPostgres, disconnectPostgres } from "./database/postgres.connection.js";
+import { bootstrapStorage } from "./modules/platform/storage/storage.bootstrap.js";
 
 const PORT = process.env.PORT || 5000;
 
-// Uygulamayı başlat
 const bootstrap = async () => {
   try {
-    // PostgreSQL bağlantısını aç
     await connectPostgres();
 
-    // HTTP sunucusunu başlat
+    await bootstrapStorage();
+
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
     console.error("Application startup failed:", error);
+
+    await disconnectPostgres();
 
     process.exit(1);
   }
@@ -25,7 +27,6 @@ const bootstrap = async () => {
 
 bootstrap();
 
-// Güvenli kapanış işlemleri
 process.on("SIGINT", async () => {
   console.log("SIGINT received.");
 

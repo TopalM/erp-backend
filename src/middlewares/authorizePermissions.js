@@ -2,20 +2,10 @@ import { prisma } from "../database/prisma.client.js";
 import { ROLES } from "../constants/roles.js";
 import { AppError } from "../utils/appError.js";
 
-// Kullanıcı SUPER_ADMIN mı kontrol eder.
 export const isSuperAdmin = (req) => {
   return req.user?.role?.name === ROLES.SUPER_ADMIN;
 };
 
-// Kullanıcı sistem yöneticisi seviyesinde mi kontrol eder.
-// SUPER_ADMIN ve ADMIN tüm permission kontrollerini bypass eder.
-export const isAdminLike = (req) => {
-  return [ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(req.user?.role?.name);
-};
-
-// Kullanıcının istenen permissionlara sahip olup olmadığını kontrol eder.
-// SUPER_ADMIN ve ADMIN için permission kontrolü yapılmaz.
-// Diğer kullanıcılar için requiredPermissions listesindeki tüm yetkiler aranır.
 export const authorizePermissions = (...requiredPermissions) => {
   return async (req, res, next) => {
     try {
@@ -23,7 +13,7 @@ export const authorizePermissions = (...requiredPermissions) => {
         throw new AppError("Yetkisiz erişim.", 401);
       }
 
-      if (isAdminLike(req)) {
+      if (isSuperAdmin(req)) {
         return next();
       }
 
@@ -40,15 +30,29 @@ export const authorizePermissions = (...requiredPermissions) => {
         });
       }
 
-      const permissionSet = new Set();
+      const allowedPermissions = new Set();
+      const deniedPermissions = new Set();
 
       userPermissions.forEach((userPermission) => {
-        if (userPermission.permission?.code) {
-          permissionSet.add(userPermission.permission.code);
+        const code = userPermission.permission?.code;
+
+        if (!code) return;
+
+        if (userPermission.effect === "DENY") {
+          deniedPermissions.add(code);
+          return;
         }
+
+        allowedPermissions.add(code);
       });
 
-      const hasAllPermissions = requiredPermissions.every((permission) => permissionSet.has(permission));
+      const hasDeniedPermission = requiredPermissions.some((permission) => deniedPermissions.has(permission));
+
+      if (hasDeniedPermission) {
+        throw new AppError("Bu işlem için yetkiniz bulunmamaktadır.", 403);
+      }
+
+      const hasAllPermissions = requiredPermissions.every((permission) => allowedPermissions.has(permission));
 
       if (!hasAllPermissions) {
         throw new AppError("Bu işlem için yetkiniz bulunmamaktadır.", 403);
@@ -61,8 +65,6 @@ export const authorizePermissions = (...requiredPermissions) => {
   };
 };
 
-// Sadece SUPER_ADMIN rolüne izin verir.
-// Sistem logları, audit logları, süper admin yönetimi gibi kritik işlemlerde kullanılır.
 export const authorizeSuperAdmin = (req, res, next) => {
   try {
     if (!req.user) {

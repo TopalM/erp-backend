@@ -5,238 +5,260 @@ import { prisma } from "../database/prisma.client.js";
 import { DEFAULT_ROLE_LIST, ROLES } from "../constants/roles.js";
 
 import { Departments } from "./data/Departments.js";
-import { DEFAULT_PERMISSIONS } from "./data/permissions.js";
+import { DEFAULT_PERMISSIONS } from "./data/Permissions.js";
 import { ProductionReaktor } from "./data/ProductionReaktor.js";
 
-import { units } from "./data/Lookups/Units.js";
 import { BloodType } from "./data/Lookups/BloodType.js";
 import { Cities } from "./data/Lookups/Cities.js";
 import { Countries } from "./data/Lookups/Countries.js";
-import { Districts } from "./data/Lookups/Districts.js";
-import { SubRegions } from "./data/Lookups/SubRegions.js";
-import { TaxOffices } from "./data/Lookups/TaxOffices.js";
 import { Currency } from "./data/Lookups/Currency.js";
+import { Districts } from "./data/Lookups/Districts.js";
 import { FaultType } from "./data/Lookups/FaultType.js";
 import { Locations } from "./data/Lookups/Locations.js";
 import { MachineType } from "./data/Lookups/MachineType.js";
-import { PaymentTerm } from "./data//Lookups/PaymentTerm.js";
-import { PaymentTerm_RawMaterial } from "./data/Lookups/PaymentTerm_RawMaterial.js";
+import { paymentTerms } from "./data/Lookups/PaymentTerm.js";
 import { PlaceOfUse } from "./data/Lookups/PlaceOfUse.js";
 import { ProductionYear } from "./data/Lookups/ProductionYear.js";
+import { PurchaseReeason } from "./data/Lookups/PurchaseReason.js";
 import { Purchased } from "./data/Lookups/Purchased.js";
-import { reasonFailure } from "./data/Lookups/reasonFailure.js";
+import { reasonFailure } from "./data/Lookups/ReasonFailure.js";
+import { SubRegions } from "./data/Lookups/SubRegions.js";
 import { SupplierPoint } from "./data/Lookups/SupplierPoint.js";
 import { TankFarm } from "./data/Lookups/TankFarm.js";
+import { TaxOffices } from "./data/Lookups/TaxOffices.js";
 import { TaxRatio } from "./data/Lookups/TaxRatio.js";
 import { Transport } from "./data/Lookups/Transport.js";
-import { PurchaseReeason } from "./data/Lookups/PurchaseReason.js";
-import { utilityMeters } from "./data/UtilityMeters.js";
-import { utilityMeterTypes } from "./data/Lookups/utilityMeterTypes.js";
+import { units } from "./data/Lookups/Units.js";
 
-// Seed datasındaki gösterilecek değeri standart hale getirir.
+import { qualityAppearance } from "./data/Quality/Appearance.js";
+import { inputControlAppearance } from "./data/Quality/InputControlAppearance.js";
+import { rawMaterialAnalysis } from "./data/Quality/RawMaterialAnalysis.js";
+import { rawMaterialCategory } from "./data/Quality/RawMaterialCategory.js";
+import { rawMaterialType } from "./data/Quality/RawMaterialType.js";
+
+const normalizeText = (value) => String(value ?? "").trim();
+
+const normalizeNumber = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
+const uniqueBy = (items, getKey) => {
+  const map = new Map();
+
+  for (const item of items ?? []) {
+    const key = getKey(item);
+
+    if (key === null || key === undefined || key === "") continue;
+
+    map.set(String(key), item);
+  }
+
+  return [...map.values()];
+};
+
 const getSeedName = (item) => {
-  return String(item.name ?? item.label ?? item.value ?? item.reasonPurchase ?? item.tankName ?? "").trim();
+  return normalizeText(
+    item.name ?? item.label ?? item.value ?? item.reasonPurchase ?? item.tankName ?? item.subregion ?? item.analysisName ?? item.option,
+  );
 };
 
-// "7 Gün", "30 Gün", "120 Gün" gibi ifadelerden gün sayısını çıkarır.
-const extractPaymentTermDays = (value) => {
-  const match = String(value).match(/\d+/);
+const getPaymentTermId = (item) => {
+  const legacyId = normalizeNumber(item.legacyId ?? item.id);
 
-  return match ? Number(match[0]) : null;
+  if (legacyId === null) {
+    throw new Error(`PaymentTerm id bulunamadı: ${JSON.stringify(item)}`);
+  }
+
+  return item.scope === "RAW_MATERIAL" ? 1000 + legacyId : legacyId;
 };
 
-// Country, City, District, TaxOffice gibi lokasyon lookup verilerini yükler.
-const seedLocationLookups = async () => {
-  console.log("Lokasyon lookup verileri yükleniyor...");
+const getRawMaterialAnalysisOptionId = ({ parameterId, optionId }) => {
+  return parameterId * 1000 + optionId;
+};
 
-  for (const country of Countries) {
+const seedCountries = async () => {
+  console.log("Ülkeler yükleniyor...");
+
+  for (const country of uniqueBy(Countries, (item) => item.id)) {
     await prisma.country.upsert({
-      where: { id: country.id },
-      update: {
-        value: country.value,
-        iso2: country.iso2,
-        phoneCode: country.phoneCode,
-      },
-      create: {
-        id: country.id,
-        value: country.value,
-        iso2: country.iso2,
-        phoneCode: country.phoneCode,
-      },
-    });
-  }
-
-  for (const subRegion of SubRegions) {
-    await prisma.subRegion.upsert({
       where: {
-        legacyId: subRegion.id,
+        id: Number(country.id),
       },
       update: {
-        name: subRegion.subregion,
-        countryId: subRegion.countryId,
-        isActive: true,
+        value: normalizeText(country.value),
+        iso2: normalizeText(country.iso2),
+        phoneCode: normalizeText(country.phoneCode),
       },
       create: {
-        legacyId: subRegion.id,
-        name: subRegion.subregion,
-        countryId: subRegion.countryId,
-        isActive: true,
+        id: Number(country.id),
+        value: normalizeText(country.value),
+        iso2: normalizeText(country.iso2),
+        phoneCode: normalizeText(country.phoneCode),
       },
     });
   }
 
-  for (const city of Cities) {
+  console.log("Ülkeler yüklendi.");
+};
+
+const seedCities = async () => {
+  console.log("Şehirler yükleniyor...");
+
+  for (const city of uniqueBy(Cities, (item) => item.id)) {
     await prisma.city.upsert({
       where: {
-        id: city.id,
+        id: Number(city.id),
       },
       update: {
-        value: city.value,
-        countryId: city.countryId,
+        value: normalizeText(city.value),
+        countryId: Number(city.countryId),
       },
       create: {
-        id: city.id,
-        value: city.value,
-        countryId: city.countryId,
+        id: Number(city.id),
+        value: normalizeText(city.value),
+        countryId: Number(city.countryId),
       },
     });
   }
 
-  for (const district of Districts) {
+  console.log("Şehirler yüklendi.");
+};
+
+const seedDistricts = async () => {
+  console.log("İlçeler yükleniyor...");
+
+  for (const district of uniqueBy(Districts, (item) => item.id)) {
     await prisma.district.upsert({
       where: {
-        id: district.id,
+        id: Number(district.id),
       },
       update: {
-        value: district.value,
-        cityId: district.cityId,
+        value: normalizeText(district.value),
+        cityId: Number(district.cityId),
       },
       create: {
-        id: district.id,
-        value: district.value,
-        cityId: district.cityId,
+        id: Number(district.id),
+        value: normalizeText(district.value),
+        cityId: Number(district.cityId),
       },
     });
   }
 
-  for (const taxOffice of TaxOffices) {
+  console.log("İlçeler yüklendi.");
+};
+
+const seedSubRegions = async () => {
+  console.log("Alt bölgeler yükleniyor...");
+
+  for (const item of uniqueBy(SubRegions, (item) => item.id)) {
+    const name = normalizeText(item.subregion ?? item.name ?? item.value);
+
+    if (!name) continue;
+
+    await prisma.subRegion.upsert({
+      where: {
+        id: Number(item.id),
+      },
+      update: {
+        countryId: Number(item.countryId),
+        name,
+        isActive: true,
+      },
+      create: {
+        id: Number(item.id),
+        countryId: Number(item.countryId),
+        name,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log("Alt bölgeler yüklendi.");
+};
+
+const seedTaxOffices = async () => {
+  console.log("Vergi daireleri yükleniyor...");
+
+  for (const item of uniqueBy(TaxOffices, (item) => item.id)) {
+    const name = normalizeText(item.value ?? item.name);
+
+    if (!name) continue;
+
     await prisma.taxOffice.upsert({
       where: {
-        legacyId: taxOffice.id,
+        id: Number(item.id),
       },
       update: {
-        name: taxOffice.value,
-        cityId: taxOffice.cityId,
+        cityId: Number(item.cityId),
+        name,
         isActive: true,
       },
       create: {
-        legacyId: taxOffice.id,
-        name: taxOffice.value,
-        cityId: taxOffice.cityId,
+        id: Number(item.id),
+        cityId: Number(item.cityId),
+        name,
         isActive: true,
       },
     });
   }
 
-  for (const unit of units) {
+  console.log("Vergi daireleri yüklendi.");
+};
+
+const seedUnits = async () => {
+  console.log("Birimler yükleniyor...");
+
+  const uniqueUnits = uniqueBy(units, (item) => item.code);
+
+  for (const [index, item] of uniqueUnits.entries()) {
+    const id = Number(item.id ?? index + 1);
+
     await prisma.unit.upsert({
-      where: { code: unit.code },
-
-      update: unit,
-
-      create: unit,
-    });
-  }
-
-  console.log("Lokasyon lookup verileri yüklendi.");
-};
-
-const seedUtilityMeterTypes = async () => {
-  console.log("Sayaç tipleri yükleniyor...");
-
-  for (const item of utilityMeterTypes) {
-    await prisma.utilityMeterType.upsert({
       where: {
-        code: item.code,
+        id,
       },
       update: {
-        name: item.name,
-        defaultUnit: item.defaultUnit,
+        code: normalizeText(item.code),
+        name: normalizeText(item.name),
+        symbol: item.symbol ? normalizeText(item.symbol) : null,
         isActive: true,
       },
       create: {
-        legacyId: item.id ?? null,
-        code: item.code,
-        name: item.name,
-        defaultUnit: item.defaultUnit,
+        id,
+        code: normalizeText(item.code),
+        name: normalizeText(item.name),
+        symbol: item.symbol ? normalizeText(item.symbol) : null,
         isActive: true,
       },
     });
   }
 
-  console.log("Sayaç tipleri yüklendi.");
+  console.log("Birimler yüklendi.");
 };
 
-const seedUtilityMeters = async () => {
-  console.log("Sayaçlar yükleniyor...");
-
-  for (const item of utilityMeters) {
-    const meterType = await prisma.utilityMeterType.findUnique({
-      where: {
-        code: item.type,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!meterType) {
-      throw new Error(`Sayaç tipi bulunamadı: ${item.type}`);
-    }
-
-    await prisma.utilityMeter.upsert({
-      where: {
-        code: item.code,
-      },
-      update: {
-        name: item.name,
-        meterTypeId: meterType.id,
-        unit: item.unit,
-        isActive: true,
-      },
-      create: {
-        code: item.code,
-        name: item.name,
-        meterTypeId: meterType.id,
-        unit: item.unit,
-        isActive: true,
-      },
-    });
-  }
-
-  console.log("Sayaçlar yüklendi.");
-};
-
-// Para birimlerini yükler.
 const seedCurrencies = async () => {
   console.log("Para birimleri yükleniyor...");
 
-  for (const item of Currency) {
-    const code = String(item.value ?? item.code ?? "").trim();
+  for (const item of uniqueBy(Currency, (item) => item.id)) {
+    const code = normalizeText(item.code ?? item.value);
+    const name = item.name ?? item.label;
+
+    if (!code) continue;
 
     await prisma.currency.upsert({
       where: {
-        legacyId: item.id,
+        id: Number(item.id),
       },
       update: {
         code,
-        name: item.label ? String(item.label).trim() : null,
+        name: name ? normalizeText(name) : null,
         isActive: true,
       },
       create: {
-        legacyId: item.id,
+        id: Number(item.id),
         code,
-        name: item.label ? String(item.label).trim() : null,
+        name: name ? normalizeText(name) : null,
         isActive: true,
       },
     });
@@ -245,27 +267,27 @@ const seedCurrencies = async () => {
   console.log("Para birimleri yüklendi.");
 };
 
-// KDV oranlarını yükler.
 const seedTaxRatios = async () => {
   console.log("KDV oranları yükleniyor...");
 
-  for (const item of TaxRatio) {
-    const value = Number(item.value);
-    const name = `%${value}`;
+  for (const item of uniqueBy(TaxRatio, (item) => item.id)) {
+    const value = normalizeNumber(item.value);
+
+    if (value === null) continue;
 
     await prisma.taxRatio.upsert({
       where: {
-        legacyId: item.id,
+        id: Number(item.id),
       },
       update: {
         value,
-        name,
+        name: `%${value}`,
         isActive: true,
       },
       create: {
-        legacyId: item.id,
+        id: Number(item.id),
         value,
-        name,
+        name: `%${value}`,
         isActive: true,
       },
     });
@@ -274,62 +296,33 @@ const seedTaxRatios = async () => {
   console.log("KDV oranları yüklendi.");
 };
 
-// Ödeme vadelerini yükler.
-// GENERAL: Malzeme / hizmet satınalma
-// RAW_MATERIAL: Hammadde satınalma
 const seedPaymentTerms = async () => {
   console.log("Ödeme vadeleri yükleniyor...");
 
-  for (const item of PaymentTerm) {
-    const name = String(item.value).trim();
+  for (const item of uniqueBy(paymentTerms, (item) => `${item.scope}-${item.legacyId ?? item.id}`)) {
+    const id = getPaymentTermId(item);
+    const name = normalizeText(item.name ?? item.value ?? item.label);
+
+    if (!name) continue;
 
     await prisma.paymentTerm.upsert({
       where: {
-        scope_legacyId: {
-          scope: "GENERAL",
-          legacyId: item.id,
-        },
+        id,
       },
       update: {
-        code: null,
+        scope: item.scope,
+        code: item.code ? normalizeText(item.code) : null,
         name,
-        days: extractPaymentTermDays(name),
-        requiresDay: false,
-        isActive: true,
-      },
-      create: {
-        legacyId: item.id,
-        scope: "GENERAL",
-        code: null,
-        name,
-        days: extractPaymentTermDays(name),
-        requiresDay: false,
-        isActive: true,
-      },
-    });
-  }
-
-  for (const item of PaymentTerm_RawMaterial) {
-    await prisma.paymentTerm.upsert({
-      where: {
-        scope_legacyId: {
-          scope: "RAW_MATERIAL",
-          legacyId: item.id,
-        },
-      },
-      update: {
-        code: String(item.value).trim(),
-        name: String(item.label).trim(),
-        days: null,
+        days: item.days === null || item.days === undefined ? null : Number(item.days),
         requiresDay: Boolean(item.requiresDay),
         isActive: true,
       },
       create: {
-        legacyId: item.id,
-        scope: "RAW_MATERIAL",
-        code: String(item.value).trim(),
-        name: String(item.label).trim(),
-        days: null,
+        id,
+        scope: item.scope,
+        code: item.code ? normalizeText(item.code) : null,
+        name,
+        days: item.days === null || item.days === undefined ? null : Number(item.days),
         requiresDay: Boolean(item.requiresDay),
         isActive: true,
       },
@@ -339,22 +332,25 @@ const seedPaymentTerms = async () => {
   console.log("Ödeme vadeleri yüklendi.");
 };
 
-// Üretim yıllarını yükler.
 const seedProductionYears = async () => {
   console.log("Üretim yılları yükleniyor...");
 
-  for (const item of ProductionYear) {
+  for (const item of uniqueBy(ProductionYear, (item) => item.id)) {
+    const year = normalizeNumber(item.year ?? item.value);
+
+    if (year === null) continue;
+
     await prisma.productionYear.upsert({
       where: {
-        legacyId: item.id,
+        id: Number(item.id),
       },
       update: {
-        year: Number(item.value),
+        year,
         isActive: true,
       },
       create: {
-        legacyId: item.id,
-        year: Number(item.value),
+        id: Number(item.id),
+        year,
         isActive: true,
       },
     });
@@ -363,24 +359,27 @@ const seedProductionYears = async () => {
   console.log("Üretim yılları yüklendi.");
 };
 
-// Tedarikçi puanlarını yükler.
 const seedSupplierPoints = async () => {
   console.log("Tedarikçi puanları yükleniyor...");
 
-  for (const item of SupplierPoint) {
+  for (const item of uniqueBy(SupplierPoint, (item) => item.id)) {
+    const value = normalizeNumber(item.value);
+
+    if (value === null) continue;
+
     await prisma.supplierPoint.upsert({
       where: {
-        legacyId: item.id,
+        id: Number(item.id),
       },
       update: {
-        value: Number(item.value),
-        label: String(item.value),
+        value,
+        label: normalizeText(item.label ?? item.value),
         isActive: true,
       },
       create: {
-        legacyId: item.id,
-        value: Number(item.value),
-        label: String(item.value),
+        id: Number(item.id),
+        value,
+        label: normalizeText(item.label ?? item.value),
         isActive: true,
       },
     });
@@ -389,28 +388,24 @@ const seedSupplierPoints = async () => {
   console.log("Tedarikçi puanları yüklendi.");
 };
 
-// Standart lookup modellerini yükler.
-// Kullanılan model yapısı:
-// id String @default(cuid())
-// legacyId Int? @unique
-// name String
-// isActive Boolean
-const seedSimpleLookup = async ({ label, delegate, data }) => {
+const seedNamedLookup = async ({ label, delegate, data }) => {
   console.log(`${label} yükleniyor...`);
 
-  for (const item of data) {
+  for (const item of uniqueBy(data, (item) => item.id)) {
     const name = getSeedName(item);
+
+    if (!name) continue;
 
     await delegate.upsert({
       where: {
-        legacyId: item.id,
+        id: Number(item.id),
       },
       update: {
         name,
         isActive: true,
       },
       create: {
-        legacyId: item.id,
+        id: Number(item.id),
         name,
         isActive: true,
       },
@@ -420,131 +415,210 @@ const seedSimpleLookup = async ({ label, delegate, data }) => {
   console.log(`${label} yüklendi.`);
 };
 
-// Bağımsız lookup tablolarını yükler.
-const seedIndependentLookups = async () => {
-  await seedCurrencies();
-  await seedTaxRatios();
-  await seedPaymentTerms();
-  await seedProductionYears();
-  await seedSupplierPoints();
-
-  await seedSimpleLookup({
+const seedBloodTypes = async () => {
+  await seedNamedLookup({
     label: "Kan grupları",
     delegate: prisma.bloodType,
     data: BloodType,
   });
+};
 
-  await seedSimpleLookup({
+const seedFaultTypes = async () => {
+  await seedNamedLookup({
     label: "Arıza tipleri",
     delegate: prisma.faultType,
     data: FaultType,
   });
+};
 
-  await seedSimpleLookup({
+const seedLocations = async () => {
+  await seedNamedLookup({
     label: "Lokasyonlar",
     delegate: prisma.location,
     data: Locations,
   });
+};
 
-  await seedSimpleLookup({
+const seedMachineTypes = async () => {
+  await seedNamedLookup({
     label: "Makine tipleri",
     delegate: prisma.machineType,
     data: MachineType,
   });
+};
 
-  await seedSimpleLookup({
+const seedPlaceOfUses = async () => {
+  await seedNamedLookup({
     label: "Kullanım yerleri",
     delegate: prisma.placeOfUse,
     data: PlaceOfUse,
   });
+};
 
-  await seedSimpleLookup({
+const seedPurchased = async () => {
+  await seedNamedLookup({
     label: "Satınalma tipleri",
     delegate: prisma.purchased,
     data: Purchased,
   });
+};
 
-  await seedSimpleLookup({
+const seedPurchaseReasons = async () => {
+  await seedNamedLookup({
     label: "Satınalma nedenleri",
     delegate: prisma.purchaseReason,
     data: PurchaseReeason,
   });
+};
 
-  await seedSimpleLookup({
+const seedFailureReasons = async () => {
+  await seedNamedLookup({
     label: "Arıza nedenleri",
     delegate: prisma.failureReason,
     data: reasonFailure,
   });
+};
 
-  await seedSimpleLookup({
+const seedTankFarms = async () => {
+  await seedNamedLookup({
     label: "Tank çiftliği verileri",
     delegate: prisma.tankFarm,
     data: TankFarm,
   });
+};
 
-  await seedSimpleLookup({
+const seedTransportTypes = async () => {
+  await seedNamedLookup({
     label: "Taşıma tipleri",
     delegate: prisma.transportType,
     data: Transport,
   });
 };
 
-// Yetki kayıtlarını yükler.
-const seedPermissions = async () => {
-  console.log("Yetkiler yükleniyor...");
+const seedQualityAppearances = async () => {
+  await seedNamedLookup({
+    label: "Kalite görünüşleri",
+    delegate: prisma.qualityAppearance,
+    data: qualityAppearance,
+  });
+};
 
-  for (const permission of DEFAULT_PERMISSIONS) {
-    await prisma.permission.upsert({
+const seedInputControlAppearances = async () => {
+  await seedNamedLookup({
+    label: "Girdi kontrol görünüşleri",
+    delegate: prisma.inputControlAppearance,
+    data: inputControlAppearance,
+  });
+};
+
+const seedRawMaterialCategories = async () => {
+  await seedNamedLookup({
+    label: "Hammadde kategorileri",
+    delegate: prisma.rawMaterialCategory,
+    data: rawMaterialCategory,
+  });
+};
+
+const seedRawMaterialTypes = async () => {
+  await seedNamedLookup({
+    label: "Hammadde tipleri",
+    delegate: prisma.rawMaterialType,
+    data: rawMaterialType,
+  });
+};
+
+const seedRawMaterialAnalysisParameters = async () => {
+  console.log("Hammadde analiz parametreleri yükleniyor...");
+
+  for (const item of uniqueBy(rawMaterialAnalysis, (item) => item.id)) {
+    await prisma.rawMaterialAnalysisParameter.upsert({
       where: {
-        code: permission.code,
+        id: Number(item.id),
       },
       update: {
-        name: permission.name,
-        description: permission.description || null,
+        name: normalizeText(item.analysisName ?? item.name),
+        fieldKey: normalizeText(item.fieldKey),
+        unit: item.unit === undefined ? null : normalizeText(item.unit),
+        cleaned: Boolean(item.cleaned),
+        customSelect: Boolean(item.customSelect),
+        lengthValue: item.lengthValue === null || item.lengthValue === undefined ? null : Number(item.lengthValue),
+        isActive: true,
       },
       create: {
-        code: permission.code,
-        name: permission.name,
-        description: permission.description || null,
+        id: Number(item.id),
+        name: normalizeText(item.analysisName ?? item.name),
+        fieldKey: normalizeText(item.fieldKey),
+        unit: item.unit === undefined ? null : normalizeText(item.unit),
+        cleaned: Boolean(item.cleaned),
+        customSelect: Boolean(item.customSelect),
+        lengthValue: item.lengthValue === null || item.lengthValue === undefined ? null : Number(item.lengthValue),
+        isActive: true,
       },
     });
   }
 
-  console.log("Yetkiler yüklendi.");
+  console.log("Hammadde analiz parametreleri yüklendi.");
 };
 
-// Tüm lookup verilerini yükler.
-const seedLookups = async () => {
-  console.log("Lookup verileri yükleniyor...");
+const seedRawMaterialAnalysisOptions = async () => {
+  console.log("Hammadde analiz seçenekleri yükleniyor...");
 
-  await seedLocationLookups();
-  await seedIndependentLookups();
-  await seedPermissions();
+  for (const parameter of uniqueBy(rawMaterialAnalysis, (item) => item.id)) {
+    const parameterId = Number(parameter.id);
+    const options = uniqueBy(parameter.options ?? [], (item) => item.id);
 
-  console.log("Lookup verileri yüklendi.");
+    for (const option of options) {
+      const optionId = Number(option.id);
+      const value = normalizeText(option.option ?? option.value);
+
+      if (!value) continue;
+
+      const id = getRawMaterialAnalysisOptionId({
+        parameterId,
+        optionId,
+      });
+
+      await prisma.rawMaterialAnalysisOption.upsert({
+        where: {
+          id,
+        },
+        update: {
+          parameterId,
+          value,
+          isActive: true,
+        },
+        create: {
+          id,
+          parameterId,
+          value,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  console.log("Hammadde analiz seçenekleri yüklendi.");
 };
 
-// Üretim reaktörlerini yükler.
-// Üretim reaktörlerini yükler.
 const seedProductionReactors = async () => {
   console.log("Üretim reaktörleri yükleniyor...");
 
-  for (const item of ProductionReaktor) {
-    const sortOrder = Number(item.id) - 1;
-
+  for (const item of uniqueBy(ProductionReaktor, (item) => item.id)) {
     await prisma.productionReactor.upsert({
       where: {
-        code: `R${item.id}`,
+        id: Number(item.id),
       },
       update: {
-        name: item.value,
-        sortOrder,
+        code: `R${item.id}`,
+        name: normalizeText(item.value),
+        sortOrder: Number(item.id) - 1,
         isActive: true,
       },
       create: {
+        id: Number(item.id),
         code: `R${item.id}`,
-        name: item.value,
-        sortOrder,
+        name: normalizeText(item.value),
+        sortOrder: Number(item.id) - 1,
         isActive: true,
       },
     });
@@ -553,13 +627,12 @@ const seedProductionReactors = async () => {
   console.log("Üretim reaktörleri yüklendi.");
 };
 
-// Departman kayıtlarını yükler.
 const seedDepartments = async () => {
   console.log("Departmanlar yükleniyor...");
 
   const departments = [];
 
-  for (const item of Departments) {
+  for (const item of uniqueBy(Departments, (item) => item.code)) {
     const department = await prisma.department.upsert({
       where: {
         code: item.code,
@@ -581,7 +654,6 @@ const seedDepartments = async () => {
   return departments;
 };
 
-// Sistem rollerini yükler.
 const seedRoles = async () => {
   console.log("Roller yükleniyor...");
 
@@ -609,9 +681,31 @@ const seedRoles = async () => {
   return roles;
 };
 
-// Varsayılan Süper Admin kullanıcısını oluşturur veya günceller.
+const seedPermissions = async () => {
+  console.log("Yetkiler yükleniyor...");
+
+  for (const permission of uniqueBy(DEFAULT_PERMISSIONS, (item) => item.code)) {
+    await prisma.permission.upsert({
+      where: {
+        code: permission.code,
+      },
+      update: {
+        name: permission.name,
+        description: permission.description || null,
+      },
+      create: {
+        code: permission.code,
+        name: permission.name,
+        description: permission.description || null,
+      },
+    });
+  }
+
+  console.log("Yetkiler yüklendi.");
+};
+
 const seedSuperAdmin = async ({ departments, roles }) => {
-  console.log("Süper Admin kullanıcısı yükleniyor...");
+  console.log("Süper Admin kullanıcıları yükleniyor...");
 
   const managementDepartment = departments.find((item) => item.code === "MANAGEMENT");
 
@@ -625,97 +719,109 @@ const seedSuperAdmin = async ({ departments, roles }) => {
     throw new Error("SUPER_ADMIN role not found");
   }
 
-  const passwordHash = await bcrypt.hash("Mustafa123*", 10);
-
-  const superAdminUser = await prisma.user.upsert({
-    where: {
-      email: "mustafa.topal@plastifay.com.tr",
-    },
-    update: {
-      firstName: "Mustafa",
-      lastName: "Topal",
-      passwordHash,
-      isActive: true,
-      emailVerifiedAt: new Date(),
-      tokenVersion: 0,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      departmentId: managementDepartment.id,
-      roleId: superAdminRole.id,
-    },
-    create: {
+  const users = [
+    {
       firstName: "Mustafa",
       lastName: "Topal",
       email: "mustafa.topal@plastifay.com.tr",
-      passwordHash,
-      isActive: true,
-      emailVerifiedAt: new Date(),
-      departmentId: managementDepartment.id,
-      roleId: superAdminRole.id,
+      password: "Mustafa123*",
     },
-  });
-
-  const igalPasswordHash = await bcrypt.hash("igal123*", 10);
-
-  const igalUser = await prisma.user.upsert({
-    where: {
-      email: "igal.kovos@plastifay.com.tr",
-    },
-    update: {
-      firstName: "İgal",
-      lastName: "Kovos",
-      passwordHash: igalPasswordHash,
-      isActive: true,
-      emailVerifiedAt: new Date(),
-      tokenVersion: 0,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      departmentId: managementDepartment.id,
-      roleId: superAdminRole.id,
-    },
-    create: {
+    {
       firstName: "İgal",
       lastName: "Kovos",
       email: "igal.kovos@plastifay.com.tr",
-      passwordHash: igalPasswordHash,
-      isActive: true,
-      emailVerifiedAt: new Date(),
-      departmentId: managementDepartment.id,
-      roleId: superAdminRole.id,
+      password: "igal123*",
     },
-  });
+  ];
 
-  console.log({
-    department: managementDepartment,
-    users: [
-      {
-        id: superAdminUser.id,
-        email: superAdminUser.email,
-        role: ROLES.SUPER_ADMIN,
-        password: "Mustafa123*",
-      },
-      {
-        id: igalUser.id,
-        email: igalUser.email,
-        role: ROLES.SUPER_ADMIN,
-        password: "igal123*",
-      },
-    ],
-  });
+  for (const item of users) {
+    const passwordHash = await bcrypt.hash(item.password, 10);
 
-  console.log("Süper Admin kullanıcısı yüklendi.");
+    await prisma.user.upsert({
+      where: {
+        email: item.email,
+      },
+      update: {
+        firstName: item.firstName,
+        lastName: item.lastName,
+        passwordHash,
+        isActive: true,
+        emailVerifiedAt: new Date(),
+        tokenVersion: 0,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        departmentId: managementDepartment.id,
+        roleId: superAdminRole.id,
+      },
+      create: {
+        firstName: item.firstName,
+        lastName: item.lastName,
+        email: item.email,
+        passwordHash,
+        isActive: true,
+        emailVerifiedAt: new Date(),
+        departmentId: managementDepartment.id,
+        roleId: superAdminRole.id,
+      },
+    });
+  }
+
+  console.log("Süper Admin kullanıcıları yüklendi.");
 };
 
-// Ana seed akışı.
+const seedLookups = async () => {
+  console.log("Lookup verileri yükleniyor...");
+
+  await seedCountries();
+  await seedCities();
+  await seedDistricts();
+  await seedSubRegions();
+  await seedTaxOffices();
+
+  await seedUnits();
+  await seedCurrencies();
+  await seedTaxRatios();
+  await seedPaymentTerms();
+  await seedProductionYears();
+  await seedSupplierPoints();
+
+  await seedBloodTypes();
+  await seedFaultTypes();
+  await seedLocations();
+  await seedMachineTypes();
+  await seedPlaceOfUses();
+  await seedPurchased();
+  await seedPurchaseReasons();
+  await seedFailureReasons();
+  await seedTankFarms();
+  await seedTransportTypes();
+
+  console.log("Lookup verileri yüklendi.");
+};
+
+const seedQualityLookups = async () => {
+  console.log("Kalite lookup verileri yükleniyor...");
+
+  await seedQualityAppearances();
+  await seedInputControlAppearances();
+  await seedRawMaterialCategories();
+  await seedRawMaterialTypes();
+  await seedRawMaterialAnalysisParameters();
+  await seedRawMaterialAnalysisOptions();
+
+  console.log("Kalite lookup verileri yüklendi.");
+};
+
 const seed = async () => {
   await seedLookups();
-  await seedProductionReactors();
+  await seedQualityLookups();
 
-  await seedUtilityMeterTypes();
-  await seedUtilityMeters();
+  await seedProductionReactors();
 
   const departments = await seedDepartments();
   const roles = await seedRoles();
+
+  await seedPermissions();
 
   await seedSuperAdmin({
     departments,
