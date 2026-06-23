@@ -7,9 +7,7 @@ import { prisma } from "../../src/database/prisma.client.js";
 
 const getFreshUser = async (userId) => {
   return prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+    where: { id: userId },
     include: {
       role: true,
       department: true,
@@ -28,7 +26,9 @@ describe("RBAC - user permission allow/deny", () => {
       permissions: [PERMISSIONS.SYSTEM_HEALTH_READ],
     });
 
-    const res = await authRequest(user).get("/api/system/health");
+    const freshUser = await getFreshUser(user.id);
+
+    const res = await authRequest(freshUser).get("/api/system/health");
 
     expect(res.status).toBe(200);
   });

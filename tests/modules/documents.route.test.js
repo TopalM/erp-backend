@@ -5,7 +5,7 @@ import { api, authHeader } from "../setup/auth.js";
 import { createTestUser } from "../setup/factories.js";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 
-const tempFilePath = path.join(process.cwd(), "tests", "temp-document.txt");
+const tempFilePath = path.join(process.cwd(), "tests", "temp-document.pdf");
 
 describe("Document routes", () => {
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe("Document routes", () => {
       .attach("file", tempFilePath);
 
     expect(res.status).toBe(201);
-    expect(res.body.data.originalFileName).toBe("temp-document.txt");
+    expect(res.body.data.originalFileName).toBe(path.basename(tempFilePath));
   });
 
   it("rejects upload without DOCUMENT_CREATE permission", async () => {

@@ -11,8 +11,8 @@
     "prisma:studio": "prisma studio",
     "seed": "node src/seed/seed.js",
     "prisma:merge": "node scripts/merge-prisma-schema.js",
-    "test": "node --env-file=.env ./node_modules/vitest/vitest.mjs run",
-    "test:watch": "node --env-file=.env ./node_modules/vitest/vitest.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
