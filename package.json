@@ -12,7 +12,8 @@
     "seed": "node src/seed/seed.js",
     "prisma:merge": "node scripts/merge-prisma-schema.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:security": "NODE_ENV=test jest tests/security --runInBand"
   },
   "keywords": [],
   "author": "",

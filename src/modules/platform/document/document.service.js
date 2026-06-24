@@ -57,6 +57,32 @@ const DOCUMENT_TYPES = [
   "OTHER",
 ];
 
+const MODULE_READ_PERMISSION_MAP = {
+  PURCHASING: "purchase.read",
+  SUPPLIER: "supplier.read",
+  QUALITY: "quality.read",
+  PRODUCTION: "production.read",
+  SHIPMENT: "shipping.read",
+  MAINTENANCE: "maintenance.read",
+  EMPLOYEE: "employee.read",
+  ACCOUNTING: "accounting.read",
+  UTILITY: "system_health.read",
+  SYSTEM: "system_log.read",
+};
+
+const MODULE_CREATE_PERMISSION_MAP = {
+  PURCHASING: "purchase.create",
+  SUPPLIER: "supplier.create",
+  QUALITY: "quality.create",
+  PRODUCTION: "production.create",
+  SHIPMENT: "shipping.create",
+  MAINTENANCE: "maintenance.create",
+  EMPLOYEE: "employee.create",
+  ACCOUNTING: "accounting.create",
+  UTILITY: "system_health.read",
+  SYSTEM: "system_log.read",
+};
+
 const assertEnumValue = (value, allowedValues, fieldName) => {
   if (value && !allowedValues.includes(value)) {
     throw new AppError(`${fieldName} geçersiz.`, 400);
@@ -85,10 +111,82 @@ function createStoredFileName(file) {
   return `${Date.now()}-${Math.round(Math.random() * 1e9)}-${baseName || "document"}${extension}`;
 }
 
-export async function uploadDocumentService({ payload, file, userId }) {
+function isAdminLike(user) {
+  return user?.role?.name === "SUPER_ADMIN" || user?.role?.name === "ADMIN";
+}
+
+function getUserPermissionCodes(user) {
+  return user?.userPermissions?.map((item) => item?.permission?.code).filter(Boolean) || [];
+}
+
+function getModuleReadPermissionCode(module) {
+  return MODULE_READ_PERMISSION_MAP[module];
+}
+
+function assertDocumentAccess(user, document) {
+  if (isAdminLike(user)) return;
+
+  const requiredPermission = getModuleReadPermissionCode(document.module);
+
+  if (!requiredPermission) {
+    throw new AppError("Bu doküman modülü için erişim kuralı tanımlı değil.", 403);
+  }
+
+  const userPermissionCodes = getUserPermissionCodes(user);
+
+  if (!userPermissionCodes.includes(requiredPermission)) {
+    throw new AppError("Bu dokümana erişim yetkiniz yok.", 403);
+  }
+}
+
+function assertDocumentCreateAccess(user, module) {
+  if (isAdminLike(user)) return;
+
+  const requiredPermission = MODULE_CREATE_PERMISSION_MAP[module];
+
+  if (!requiredPermission) {
+    throw new AppError("Bu doküman modülü için oluşturma kuralı tanımlı değil.", 403);
+  }
+
+  const userPermissionCodes = getUserPermissionCodes(user);
+
+  if (!userPermissionCodes.includes(requiredPermission)) {
+    throw new AppError("Bu modüle doküman yükleme yetkiniz yok.", 403);
+  }
+}
+
+function buildDocumentScopeWhere(user) {
+  if (isAdminLike(user)) return {};
+
+  const userPermissionCodes = getUserPermissionCodes(user);
+
+  const allowedModules = Object.entries(MODULE_READ_PERMISSION_MAP)
+    .filter(([, permissionCode]) => userPermissionCodes.includes(permissionCode))
+    .map(([module]) => module);
+
+  if (allowedModules.length === 0) {
+    return {
+      id: "__NO_DOCUMENT_ACCESS__",
+    };
+  }
+
+  return {
+    module: {
+      in: allowedModules,
+    },
+  };
+}
+
+export async function uploadDocumentService({ payload, file, user }) {
   if (!file) {
     throw new AppError("Dosya zorunludur.", 400);
   }
+
+  assertEnumValue(payload.module, DOCUMENT_MODULES, "module");
+  assertEnumValue(payload.entityType, DOCUMENT_ENTITY_TYPES, "entityType");
+  assertEnumValue(payload.documentType, DOCUMENT_TYPES, "documentType");
+
+  assertDocumentCreateAccess(user, payload.module);
 
   const moduleFolder = normalizeStoragePart(payload.module);
   const entityFolder = normalizeStoragePart(payload.entityType);
@@ -125,7 +223,7 @@ export async function uploadDocumentService({ payload, file, userId }) {
         fileExtension: fileExtension || null,
         sizeBytes: file.size || null,
         storageProvider: uploadResult.provider || null,
-        uploadedById: userId || null,
+        uploadedById: user?.id || null,
       },
     });
   } finally {
@@ -133,13 +231,14 @@ export async function uploadDocumentService({ payload, file, userId }) {
   }
 }
 
-export async function listDocumentsService(query = {}) {
+export async function listDocumentsService(query = {}, user) {
   assertEnumValue(query.module, DOCUMENT_MODULES, "module");
   assertEnumValue(query.entityType, DOCUMENT_ENTITY_TYPES, "entityType");
   assertEnumValue(query.documentType, DOCUMENT_TYPES, "documentType");
 
   const where = {
     isActive: true,
+    ...buildDocumentScopeWhere(user),
   };
 
   if (query.module) where.module = query.module;
@@ -165,7 +264,7 @@ export async function listDocumentsService(query = {}) {
   });
 }
 
-export async function getDocumentByIdService(id) {
+export async function getDocumentByIdService(id, user) {
   const document = await prisma.document.findFirst({
     where: {
       id,
@@ -187,11 +286,13 @@ export async function getDocumentByIdService(id) {
     throw new AppError("Doküman bulunamadı.", 404);
   }
 
+  assertDocumentAccess(user, document);
+
   return document;
 }
 
-export async function getDocumentDownloadUrlService(id) {
-  const document = await getDocumentByIdService(id);
+export async function getDocumentDownloadUrlService(id, user) {
+  const document = await getDocumentByIdService(id, user);
   const url = await getDownloadUrl(document.filePath);
 
   return {
@@ -202,8 +303,8 @@ export async function getDocumentDownloadUrlService(id) {
   };
 }
 
-export async function deactivateDocumentService(id) {
-  const existing = await getDocumentByIdService(id);
+export async function deactivateDocumentService(id, user) {
+  const existing = await getDocumentByIdService(id, user);
 
   return prisma.document.update({
     where: {

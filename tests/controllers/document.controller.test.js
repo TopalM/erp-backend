@@ -19,6 +19,10 @@ const createRes = () => {
 
 const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
+const testUser = {
+  id: "user1",
+};
+
 beforeEach(async () => {
   vi.resetModules();
   vi.resetAllMocks();
@@ -40,9 +44,16 @@ describe("document.controller", () => {
 
     mocks.listDocumentsService.mockResolvedValue([{ id: "doc1" }]);
 
-    await controller.listDocuments({ query: { module: "SYSTEM" } }, res, next);
+    await controller.listDocuments(
+      {
+        query: { module: "SYSTEM" },
+        user: testUser,
+      },
+      res,
+      next,
+    );
 
-    expect(mocks.listDocumentsService).toHaveBeenCalledWith({ module: "SYSTEM" });
+    expect(mocks.listDocumentsService).toHaveBeenCalledWith({ module: "SYSTEM" }, testUser);
     expect(res.json).toHaveBeenCalled();
   });
 
@@ -52,9 +63,16 @@ describe("document.controller", () => {
 
     mocks.getDocumentByIdService.mockResolvedValue({ id: "doc1" });
 
-    await controller.getDocumentById({ params: { id: "doc1" } }, res, next);
+    await controller.getDocumentById(
+      {
+        params: { id: "doc1" },
+        user: testUser,
+      },
+      res,
+      next,
+    );
 
-    expect(mocks.getDocumentByIdService).toHaveBeenCalledWith("doc1");
+    expect(mocks.getDocumentByIdService).toHaveBeenCalledWith("doc1", testUser);
     expect(res.json).toHaveBeenCalled();
   });
 
@@ -65,12 +83,20 @@ describe("document.controller", () => {
 
     mocks.uploadDocumentService.mockResolvedValue({ id: "doc1" });
 
-    await controller.uploadDocument({ body: { module: "SYSTEM" }, file, user: { id: "user1" } }, res, next);
+    await controller.uploadDocument(
+      {
+        body: { module: "SYSTEM" },
+        file,
+        user: testUser,
+      },
+      res,
+      next,
+    );
 
     expect(mocks.uploadDocumentService).toHaveBeenCalledWith({
       payload: { module: "SYSTEM" },
       file,
-      userId: "user1",
+      user: testUser,
     });
     expect(res.status).toHaveBeenCalledWith(201);
   });
@@ -81,9 +107,16 @@ describe("document.controller", () => {
 
     mocks.getDocumentDownloadUrlService.mockResolvedValue({ downloadUrl: "url" });
 
-    await controller.getDocumentDownloadUrl({ params: { id: "doc1" } }, res, next);
+    await controller.getDocumentDownloadUrl(
+      {
+        params: { id: "doc1" },
+        user: testUser,
+      },
+      res,
+      next,
+    );
 
-    expect(mocks.getDocumentDownloadUrlService).toHaveBeenCalledWith("doc1");
+    expect(mocks.getDocumentDownloadUrlService).toHaveBeenCalledWith("doc1", testUser);
     expect(res.json).toHaveBeenCalled();
   });
 
@@ -93,9 +126,16 @@ describe("document.controller", () => {
 
     mocks.deactivateDocumentService.mockResolvedValue({ id: "doc1" });
 
-    await controller.deleteDocument({ params: { id: "doc1" } }, res, next);
+    await controller.deleteDocument(
+      {
+        params: { id: "doc1" },
+        user: testUser,
+      },
+      res,
+      next,
+    );
 
-    expect(mocks.deactivateDocumentService).toHaveBeenCalledWith("doc1");
+    expect(mocks.deactivateDocumentService).toHaveBeenCalledWith("doc1", testUser);
     expect(res.json).toHaveBeenCalled();
   });
 
@@ -106,7 +146,14 @@ describe("document.controller", () => {
 
     mocks.listDocumentsService.mockRejectedValueOnce(error);
 
-    controller.listDocuments({ query: {} }, res, next);
+    controller.listDocuments(
+      {
+        query: {},
+        user: testUser,
+      },
+      res,
+      next,
+    );
     await flushPromises();
 
     expect(next).toHaveBeenCalledWith(error);

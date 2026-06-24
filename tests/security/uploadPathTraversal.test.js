@@ -20,10 +20,13 @@ describe("upload path traversal security", () => {
     fs.rmSync(fixtureDir, { recursive: true, force: true });
   });
 
-  it("sanitizes dangerous original filename", async () => {
-    const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+  const createUploader = () =>
+    createTestUser({
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
+
+  it("sanitizes dangerous original filename", async () => {
+    const user = await createUploader();
 
     const res = await api()
       .post("/api/documents")
@@ -41,9 +44,7 @@ describe("upload path traversal security", () => {
   });
 
   it("does not create file outside upload/storage path", async () => {
-    const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
-    });
+    const user = await createUploader();
 
     const evilRootPath = path.join(process.cwd(), "evil.pdf");
 
@@ -65,9 +66,7 @@ describe("upload path traversal security", () => {
   });
 
   it("stores uploaded document with normalized storage path", async () => {
-    const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
-    });
+    const user = await createUploader();
 
     const res = await api()
       .post("/api/documents")

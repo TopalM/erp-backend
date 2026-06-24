@@ -34,6 +34,13 @@ const createUser = async () => {
   });
 };
 
+const asAdminUser = (user) => ({
+  ...user,
+  role: {
+    name: "ADMIN",
+  },
+});
+
 beforeEach(async () => {
   await prisma.assignment.deleteMany({
     where: {
@@ -55,7 +62,7 @@ beforeEach(async () => {
 describe("assignment.service coverage", () => {
   it("lists assignments with filters", async () => {
     const user = await createUser();
-    const creator = await createUser();
+    const creator = asAdminUser(await createUser());
     const entityId = uniqueEntityId();
 
     await service.createAssignmentService(
@@ -67,7 +74,7 @@ describe("assignment.service coverage", () => {
         role: ROLE,
         note: "Assigned",
       },
-      creator.id,
+      creator,
     );
 
     const result = await service.listAssignmentsService({
@@ -88,7 +95,7 @@ describe("assignment.service coverage", () => {
 
   it("creates assignment with upsert", async () => {
     const user = await createUser();
-    const creator = await createUser();
+    const creator = asAdminUser(await createUser());
     const entityId = uniqueEntityId();
 
     const result = await service.createAssignmentService(
@@ -100,7 +107,7 @@ describe("assignment.service coverage", () => {
         role: ROLE,
         note: "Assigned",
       },
-      creator.id,
+      creator,
     );
 
     expect(result.module).toBe(MODULE);
@@ -133,7 +140,7 @@ describe("assignment.service coverage", () => {
 
   it("updates assignment note and role", async () => {
     const user = await createUser();
-    const creator = await createUser();
+    const creator = asAdminUser(await createUser());
 
     const assignment = await service.createAssignmentService(
       {
@@ -144,13 +151,17 @@ describe("assignment.service coverage", () => {
         role: ROLE,
         note: "Assigned",
       },
-      creator.id,
+      creator,
     );
 
-    const result = await service.updateAssignmentService(assignment.id, {
-      role: "FOLLOWER",
-      note: "Updated note",
-    });
+    const result = await service.updateAssignmentService(
+      assignment.id,
+      {
+        role: "FOLLOWER",
+        note: "Updated note",
+      },
+      creator,
+    );
 
     expect(result.role).toBe("FOLLOWER");
     expect(result.note).toBe("Updated note");
@@ -158,7 +169,7 @@ describe("assignment.service coverage", () => {
 
   it("updates assignment with empty payload", async () => {
     const user = await createUser();
-    const creator = await createUser();
+    const creator = asAdminUser(await createUser());
 
     const assignment = await service.createAssignmentService(
       {
@@ -169,10 +180,10 @@ describe("assignment.service coverage", () => {
         role: ROLE,
         note: "Assigned",
       },
-      creator.id,
+      creator,
     );
 
-    const result = await service.updateAssignmentService(assignment.id, {});
+    const result = await service.updateAssignmentService(assignment.id, {}, creator);
 
     expect(result.id).toBe(assignment.id);
     expect(result.role).toBe(ROLE);
@@ -180,10 +191,16 @@ describe("assignment.service coverage", () => {
   });
 
   it("throws when updating missing assignment", async () => {
+    const creator = asAdminUser(await createUser());
+
     await expect(
-      service.updateAssignmentService("missing-assignment-id", {
-        note: "Updated",
-      }),
+      service.updateAssignmentService(
+        "missing-assignment-id",
+        {
+          note: "Updated",
+        },
+        creator,
+      ),
     ).rejects.toMatchObject({
       statusCode: 404,
     });
@@ -191,7 +208,7 @@ describe("assignment.service coverage", () => {
 
   it("deletes assignment", async () => {
     const user = await createUser();
-    const creator = await createUser();
+    const creator = asAdminUser(await createUser());
 
     const assignment = await service.createAssignmentService(
       {
@@ -202,10 +219,10 @@ describe("assignment.service coverage", () => {
         role: ROLE,
         note: "Assigned",
       },
-      creator.id,
+      creator,
     );
 
-    await service.deleteAssignmentService(assignment.id);
+    await service.deleteAssignmentService(assignment.id, creator);
 
     const deleted = await prisma.assignment.findUnique({
       where: { id: assignment.id },
@@ -215,8 +232,59 @@ describe("assignment.service coverage", () => {
   });
 
   it("throws when deleting missing assignment", async () => {
-    await expect(service.deleteAssignmentService("missing-assignment-id")).rejects.toMatchObject({
+    const creator = asAdminUser(await createUser());
+
+    await expect(service.deleteAssignmentService("missing-assignment-id", creator)).rejects.toMatchObject({
       statusCode: 404,
+    });
+  });
+
+  it("rejects update without user context", async () => {
+    const user = await createUser();
+
+    const assignment = await service.createAssignmentService({
+      module: MODULE,
+      entityType: ENTITY_TYPE,
+      entityId: uniqueEntityId(),
+      userId: user.id,
+      role: ROLE,
+    });
+
+    await expect(service.updateAssignmentService(assignment.id, { note: "x" })).rejects.toMatchObject({
+      statusCode: 403,
+    });
+  });
+
+  it("rejects delete without user context", async () => {
+    const user = await createUser();
+
+    const assignment = await service.createAssignmentService({
+      module: MODULE,
+      entityType: ENTITY_TYPE,
+      entityId: uniqueEntityId(),
+      userId: user.id,
+      role: ROLE,
+    });
+
+    await expect(service.deleteAssignmentService(assignment.id)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+  });
+
+  it("rejects update by unrelated user", async () => {
+    const assignee = await createUser();
+    const stranger = await createUser();
+
+    const assignment = await service.createAssignmentService({
+      module: MODULE,
+      entityType: ENTITY_TYPE,
+      entityId: uniqueEntityId(),
+      userId: assignee.id,
+      role: ROLE,
+    });
+
+    await expect(service.updateAssignmentService(assignment.id, { note: "x" }, stranger)).rejects.toMatchObject({
+      statusCode: 403,
     });
   });
 });

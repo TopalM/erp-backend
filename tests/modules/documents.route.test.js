@@ -1,56 +1,72 @@
 import fs from "fs";
 import path from "path";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
 import { api, authHeader } from "../setup/auth.js";
 import { createTestUser } from "../setup/factories.js";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 
-const tempFilePath = path.join(process.cwd(), "tests", "temp-document.pdf");
+const fixtureDir = path.join(process.cwd(), "tests", "fixtures-security");
+const pdfPath = path.join(fixtureDir, "safe-file.pdf");
+const exePath = path.join(fixtureDir, "malware.exe");
+const jsPath = path.join(fixtureDir, "script.js");
 
-describe("Document routes", () => {
+describe("file upload security", () => {
   beforeEach(() => {
-    fs.writeFileSync(tempFilePath, "test document");
+    fs.mkdirSync(fixtureDir, { recursive: true });
+    fs.writeFileSync(pdfPath, "fake pdf");
+    fs.writeFileSync(exePath, "fake exe");
+    fs.writeFileSync(jsPath, "console.log('bad')");
   });
 
-  it("lists documents with DOCUMENT_READ permission", async () => {
-    const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_READ],
-    });
-
-    const res = await api().get("/api/documents").set("Authorization", authHeader(user));
-
-    expect(res.status).toBe(200);
+  afterEach(() => {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
   });
 
-  it("uploads document with DOCUMENT_CREATE permission", async () => {
-    const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
-    });
-
-    const res = await api()
+  const upload = (user, filePath) =>
+    api()
       .post("/api/documents")
       .set("Authorization", authHeader(user))
       .field("module", "SYSTEM")
       .field("entityType", "OTHER")
-      .field("entityId", `test-document-${Date.now()}`)
+      .field("entityId", `security-upload-${Date.now()}`)
       .field("documentType", "OTHER")
-      .attach("file", tempFilePath);
+      .attach("file", filePath);
+
+  it("allows approved file extension with permission", async () => {
+    const user = await createTestUser({
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
+    });
+
+    const res = await upload(user, pdfPath);
 
     expect(res.status).toBe(201);
-    expect(res.body.data.originalFileName).toBe(path.basename(tempFilePath));
+  });
+
+  it("rejects executable file upload", async () => {
+    const user = await createTestUser({
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
+    });
+
+    const res = await upload(user, exePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects javascript file upload", async () => {
+    const user = await createTestUser({
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
+    });
+
+    const res = await upload(user, jsPath);
+
+    expect(res.status).toBe(400);
   });
 
   it("rejects upload without DOCUMENT_CREATE permission", async () => {
     const user = await createTestUser();
 
-    const res = await api()
-      .post("/api/documents")
-      .set("Authorization", authHeader(user))
-      .field("module", "SYSTEM")
-      .field("entityType", "OTHER")
-      .field("entityId", `test-document-${Date.now()}`)
-      .field("documentType", "OTHER")
-      .attach("file", tempFilePath);
+    const res = await upload(user, pdfPath);
 
     expect(res.status).toBe(403);
   });

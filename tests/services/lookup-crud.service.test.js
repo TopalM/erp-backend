@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { prisma } from "../../src/database/prisma.client.js";
 
 import {
@@ -9,7 +9,17 @@ import {
   deleteLookupGroupItemService,
 } from "../../src/modules/lookups/lookup.service.js";
 
-const uniqueName = () => `Test Lookup ${Date.now()} ${Math.round(Math.random() * 1e9)}`;
+const uniqueName = () => `TEST_LOOKUP_CRUD_${Date.now()}_${Math.round(Math.random() * 1e9)}`;
+
+afterEach(async () => {
+  await prisma.bloodType.deleteMany({
+    where: {
+      name: {
+        startsWith: "TEST_LOOKUP_CRUD_",
+      },
+    },
+  });
+});
 
 describe("lookup CRUD service", () => {
   it("lists lookup groups", async () => {
@@ -65,6 +75,7 @@ describe("lookup CRUD service", () => {
     });
 
     expect(deleted).toBeTruthy();
+    expect(deleted.id).toBe(created.id);
     expect(deleted.isActive).toBe(false);
   });
 
@@ -77,7 +88,7 @@ describe("lookup CRUD service", () => {
   it("rejects invalid lookup group on create", async () => {
     await expect(
       createLookupGroupItemService("invalidGroup", {
-        value: `TEST_${Date.now()}`,
+        value: uniqueName(),
       }),
     ).rejects.toMatchObject({
       statusCode: 404,

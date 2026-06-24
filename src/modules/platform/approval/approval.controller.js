@@ -20,7 +20,7 @@ export async function submitApproval(req, res, next) {
 
 export async function approveApproval(req, res, next) {
   try {
-    const data = await service.approveApprovalService(req.params.id, req.body, req.user?.id);
+    const data = await service.approveApprovalService(req.params.id, req.body, req.user);
     res.json({ success: true, message: "Kayıt onaylandı.", data });
   } catch (error) {
     next(error);
@@ -29,7 +29,7 @@ export async function approveApproval(req, res, next) {
 
 export async function rejectApproval(req, res, next) {
   try {
-    const data = await service.rejectApprovalService(req.params.id, req.body, req.user?.id);
+    const data = await service.rejectApprovalService(req.params.id, req.body, req.user);
     res.json({ success: true, message: "Kayıt reddedildi.", data });
   } catch (error) {
     next(error);
@@ -38,7 +38,7 @@ export async function rejectApproval(req, res, next) {
 
 export async function cancelApproval(req, res, next) {
   try {
-    const data = await service.cancelApprovalService(req.params.id);
+    const data = await service.cancelApprovalService(req.params.id, req.user);
     res.json({ success: true, message: "Onay süreci iptal edildi.", data });
   } catch (error) {
     next(error);

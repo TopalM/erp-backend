@@ -35,7 +35,7 @@ describe("file upload security", () => {
 
   it("allows approved file extension with permission", async () => {
     const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const res = await upload(user, pdfPath);
@@ -45,7 +45,7 @@ describe("file upload security", () => {
 
   it("rejects executable file upload", async () => {
     const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const res = await upload(user, exePath);
@@ -55,7 +55,7 @@ describe("file upload security", () => {
 
   it("rejects javascript file upload", async () => {
     const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const res = await upload(user, jsPath);

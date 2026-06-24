@@ -40,7 +40,7 @@ describe("document access control security", () => {
 
   it("allows document list with DOCUMENT_READ", async () => {
     const user = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_READ],
+      permissions: [PERMISSIONS.DOCUMENT_READ, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const res = await api().get("/api/documents").set("Authorization", authHeader(user));
@@ -50,7 +50,7 @@ describe("document access control security", () => {
 
   it("rejects document detail without DOCUMENT_READ", async () => {
     const uploader = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const uploadRes = await uploadDocument(uploader);
@@ -63,16 +63,16 @@ describe("document access control security", () => {
     expect(res.status).toBe(403);
   });
 
-  it("allows document detail with DOCUMENT_READ", async () => {
+  it("allows document detail with DOCUMENT_READ and module read access", async () => {
     const uploader = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const uploadRes = await uploadDocument(uploader);
     expect(uploadRes.status).toBe(201);
 
     const reader = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_READ],
+      permissions: [PERMISSIONS.DOCUMENT_READ, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const res = await api().get(`/api/documents/${uploadRes.body.data.id}`).set("Authorization", authHeader(reader));
@@ -83,7 +83,7 @@ describe("document access control security", () => {
 
   it("rejects document delete without DOCUMENT_DELETE", async () => {
     const uploader = await createTestUser({
-      permissions: [PERMISSIONS.DOCUMENT_CREATE],
+      permissions: [PERMISSIONS.DOCUMENT_CREATE, PERMISSIONS.SYSTEM_LOG_READ],
     });
 
     const uploadRes = await uploadDocument(uploader);

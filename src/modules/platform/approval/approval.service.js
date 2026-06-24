@@ -6,6 +6,56 @@ function notFound(message = "Onay kaydı bulunamadı.") {
   throw error;
 }
 
+function forbidden(message = "Bu işlem için yetkiniz yok.") {
+  const error = new Error(message);
+  error.statusCode = 403;
+  throw error;
+}
+
+function conflict(message = "Onay kaydı bu işlem için uygun durumda değil.") {
+  const error = new Error(message);
+  error.statusCode = 409;
+  throw error;
+}
+
+function isAdminLike(user) {
+  return user?.role?.name === "SUPER_ADMIN" || user?.role?.name === "ADMIN";
+}
+
+function assertPendingApproval(approval) {
+  if (approval.status !== "PENDING") {
+    conflict("Sadece bekleyen onay kayıtları üzerinde işlem yapılabilir.");
+  }
+}
+
+function assertCanDecideApproval(approval, user) {
+  if (isAdminLike(user)) return;
+
+  if (!user?.id) {
+    forbidden("Onay kararı için kullanıcı bilgisi zorunludur.");
+  }
+
+  if (approval.requestedById && approval.requestedById === user.id) {
+    forbidden("Kendi oluşturduğunuz onayı karara bağlayamazsınız.");
+  }
+
+  if (approval.approverId && approval.approverId !== user.id) {
+    forbidden("Bu onay kaydı size atanmadı.");
+  }
+}
+
+function assertCanCancelApproval(approval, user) {
+  if (isAdminLike(user)) return;
+
+  if (!user?.id) {
+    forbidden("Onay iptali için kullanıcı bilgisi zorunludur.");
+  }
+
+  if (approval.requestedById !== user.id) {
+    forbidden("Sadece kendi oluşturduğunuz onay sürecini iptal edebilirsiniz.");
+  }
+}
+
 export async function listApprovalsService(query = {}) {
   const where = {};
 
@@ -56,15 +106,18 @@ export async function submitApprovalService(payload, userId) {
   });
 }
 
-export async function approveApprovalService(id, payload = {}, userId = null) {
+export async function approveApprovalService(id, payload = {}, user = null) {
   const existing = await prisma.approval.findUnique({ where: { id } });
   if (!existing) notFound();
+
+  assertPendingApproval(existing);
+  assertCanDecideApproval(existing, user);
 
   return prisma.approval.update({
     where: { id },
     data: {
       status: "APPROVED",
-      approverId: existing.approverId || userId || null,
+      approverId: existing.approverId || user?.id || null,
       decidedAt: new Date(),
       decisionNote: payload.decisionNote || null,
       rejectReason: null,
@@ -72,15 +125,18 @@ export async function approveApprovalService(id, payload = {}, userId = null) {
   });
 }
 
-export async function rejectApprovalService(id, payload = {}, userId = null) {
+export async function rejectApprovalService(id, payload = {}, user = null) {
   const existing = await prisma.approval.findUnique({ where: { id } });
   if (!existing) notFound();
+
+  assertPendingApproval(existing);
+  assertCanDecideApproval(existing, user);
 
   return prisma.approval.update({
     where: { id },
     data: {
       status: "REJECTED",
-      approverId: existing.approverId || userId || null,
+      approverId: existing.approverId || user?.id || null,
       decidedAt: new Date(),
       decisionNote: payload.decisionNote || null,
       rejectReason: payload.rejectReason || "Reddedildi.",
@@ -88,9 +144,12 @@ export async function rejectApprovalService(id, payload = {}, userId = null) {
   });
 }
 
-export async function cancelApprovalService(id) {
+export async function cancelApprovalService(id, user = null) {
   const existing = await prisma.approval.findUnique({ where: { id } });
   if (!existing) notFound();
+
+  assertPendingApproval(existing);
+  assertCanCancelApproval(existing, user);
 
   return prisma.approval.update({
     where: { id },

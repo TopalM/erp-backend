@@ -31,6 +31,7 @@ export const PERMISSIONS = {
 
   DOCUMENT_READ: "document.read",
   DOCUMENT_CREATE: "document.create",
+  DOCUMENT_DOWNLOAD: "document.download",
   DOCUMENT_DELETE: "document.delete",
 
   // ONAY YÖNETİMİ

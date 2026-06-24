@@ -22,6 +22,8 @@ const specialPermissionNames = {
   [PERMISSIONS.APPROVAL_DECIDE]: "Onay Kararı Verme",
   [PERMISSIONS.APPROVAL_CANCEL]: "Onay Süreci İptal Etme",
 
+  [PERMISSIONS.DOCUMENT_DOWNLOAD]: "Doküman İndirme",
+
   [PERMISSIONS.SYSTEM_HEALTH_READ]: "Sistem Sağlığı Görüntüleme",
   [PERMISSIONS.SYSTEM_LOG_READ]: "Sistem Logları Görüntüleme",
   [PERMISSIONS.SYSTEM_LOG_DELETE]: "Sistem Logları Silme",

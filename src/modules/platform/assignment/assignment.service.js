@@ -6,6 +6,28 @@ function notFound(message = "Atama kaydı bulunamadı.") {
   throw error;
 }
 
+function forbidden(message = "Bu işlem için yetkiniz yok.") {
+  const error = new Error(message);
+  error.statusCode = 403;
+  throw error;
+}
+
+function isAdminLike(user) {
+  return user?.role?.name === "SUPER_ADMIN" || user?.role?.name === "ADMIN";
+}
+
+function assertCanModifyAssignment(assignment, user) {
+  if (isAdminLike(user)) return;
+
+  if (!user?.id) {
+    forbidden("Atama işlemi için kullanıcı bilgisi zorunludur.");
+  }
+
+  if (assignment.createdById !== user.id) {
+    forbidden("Sadece kendi oluşturduğunuz atamayı değiştirebilirsiniz.");
+  }
+}
+
 export async function listAssignmentsService(query = {}) {
   const where = {};
 
@@ -25,7 +47,7 @@ export async function listAssignmentsService(query = {}) {
   });
 }
 
-export async function createAssignmentService(payload, createdById = null) {
+export async function createAssignmentService(payload, user = null) {
   return prisma.assignment.upsert({
     where: {
       module_entityType_entityId_userId_role: {
@@ -38,7 +60,7 @@ export async function createAssignmentService(payload, createdById = null) {
     },
     update: {
       note: payload.note || null,
-      createdById,
+      createdById: user?.id || null,
     },
     create: {
       module: payload.module,
@@ -47,14 +69,16 @@ export async function createAssignmentService(payload, createdById = null) {
       userId: payload.userId,
       role: payload.role || "RESPONSIBLE",
       note: payload.note || null,
-      createdById,
+      createdById: user?.id || null,
     },
   });
 }
 
-export async function updateAssignmentService(id, payload) {
+export async function updateAssignmentService(id, payload, user = null) {
   const existing = await prisma.assignment.findUnique({ where: { id } });
   if (!existing) notFound();
+
+  assertCanModifyAssignment(existing, user);
 
   return prisma.assignment.update({
     where: { id },
@@ -65,9 +89,11 @@ export async function updateAssignmentService(id, payload) {
   });
 }
 
-export async function deleteAssignmentService(id) {
+export async function deleteAssignmentService(id, user = null) {
   const existing = await prisma.assignment.findUnique({ where: { id } });
   if (!existing) notFound();
+
+  assertCanModifyAssignment(existing, user);
 
   await prisma.assignment.delete({ where: { id } });
   return null;

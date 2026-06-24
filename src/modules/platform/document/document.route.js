@@ -17,7 +17,7 @@ router.use(authMiddleware);
 
 router.get("/", authorizePermissions(PERMISSIONS.DOCUMENT_READ), controller.listDocuments);
 
-router.get("/:id/download-url", authorizePermissions(PERMISSIONS.DOCUMENT_READ), controller.getDocumentDownloadUrl);
+router.get("/:id/download-url", authorizePermissions(PERMISSIONS.DOCUMENT_DOWNLOAD), controller.getDocumentDownloadUrl);
 
 router.get("/:id", authorizePermissions(PERMISSIONS.DOCUMENT_READ), controller.getDocumentById);
 

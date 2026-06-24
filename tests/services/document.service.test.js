@@ -11,13 +11,25 @@ const createFile = () => {
   fs.writeFileSync(fixturePath, "service document");
 };
 
+const createAdminServiceUser = async () => {
+  const dbUser = await createTestUser();
+
+  return {
+    ...dbUser,
+    role: {
+      name: "ADMIN",
+    },
+    userPermissions: [],
+  };
+};
+
 describe("document.service", () => {
   beforeEach(() => {
     createFile();
   });
 
   it("uploads document", async () => {
-    const user = await createTestUser();
+    const user = await createAdminServiceUser();
 
     const document = await documentService.uploadDocumentService({
       payload: {
@@ -33,7 +45,7 @@ describe("document.service", () => {
         mimetype: "application/pdf",
         size: fs.statSync(fixturePath).size,
       },
-      userId: user.id,
+      user,
     });
 
     expect(document.originalFileName).toBe("service-document.pdf");
@@ -41,15 +53,22 @@ describe("document.service", () => {
   });
 
   it("lists active documents", async () => {
-    const documents = await documentService.listDocumentsService({
-      module: "SYSTEM",
-    });
+    const user = await createAdminServiceUser();
+
+    const documents = await documentService.listDocumentsService(
+      {
+        module: "SYSTEM",
+      },
+      user,
+    );
 
     expect(Array.isArray(documents)).toBe(true);
   });
 
   it("throws when document not found", async () => {
-    await expect(documentService.getDocumentByIdService("missing-id")).rejects.toMatchObject({
+    const user = await createAdminServiceUser();
+
+    await expect(documentService.getDocumentByIdService("missing-id", user)).rejects.toMatchObject({
       statusCode: 404,
     });
   });
@@ -57,7 +76,7 @@ describe("document.service", () => {
   it("deactivates document", async () => {
     createFile();
 
-    const user = await createTestUser();
+    const user = await createAdminServiceUser();
 
     const document = await documentService.uploadDocumentService({
       payload: {
@@ -72,10 +91,10 @@ describe("document.service", () => {
         mimetype: "application/pdf",
         size: fs.statSync(fixturePath).size,
       },
-      userId: user.id,
+      user,
     });
 
-    const deleted = await documentService.deactivateDocumentService(document.id);
+    const deleted = await documentService.deactivateDocumentService(document.id, user);
 
     expect(deleted.isActive).toBe(false);
   });

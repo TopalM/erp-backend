@@ -16,14 +16,13 @@ const createRes = () => {
   return res;
 };
 
+const testUser = {
+  id: "creator1",
+};
+
 beforeEach(async () => {
   vi.resetModules();
   vi.clearAllMocks();
-
-  mocks.listAssignmentsService.mockReset();
-  mocks.createAssignmentService.mockReset();
-  mocks.updateAssignmentService.mockReset();
-  mocks.deleteAssignmentService.mockReset();
 
   vi.doMock("../../src/modules/platform/assignment/assignment.service.js", () => mocks);
 
@@ -55,9 +54,9 @@ describe("assignment.controller", () => {
 
     mocks.createAssignmentService.mockResolvedValue({ id: "as1" });
 
-    await controller.createAssignment({ body: { userId: "user1" }, user: { id: "creator1" } }, res, next);
+    await controller.createAssignment({ body: { userId: "user1" }, user: testUser }, res, next);
 
-    expect(mocks.createAssignmentService).toHaveBeenCalledWith({ userId: "user1" }, "creator1");
+    expect(mocks.createAssignmentService).toHaveBeenCalledWith({ userId: "user1" }, testUser);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
@@ -72,9 +71,9 @@ describe("assignment.controller", () => {
 
     mocks.updateAssignmentService.mockResolvedValue({ id: "as1" });
 
-    await controller.updateAssignment({ params: { id: "as1" }, body: { role: "RESPONSIBLE" } }, res, next);
+    await controller.updateAssignment({ params: { id: "as1" }, body: { role: "RESPONSIBLE" }, user: testUser }, res, next);
 
-    expect(mocks.updateAssignmentService).toHaveBeenCalledWith("as1", { role: "RESPONSIBLE" });
+    expect(mocks.updateAssignmentService).toHaveBeenCalledWith("as1", { role: "RESPONSIBLE" }, testUser);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       message: "Atama güncellendi.",
@@ -88,9 +87,9 @@ describe("assignment.controller", () => {
 
     mocks.deleteAssignmentService.mockResolvedValue(null);
 
-    await controller.deleteAssignment({ params: { id: "as1" } }, res, next);
+    await controller.deleteAssignment({ params: { id: "as1" }, user: testUser }, res, next);
 
-    expect(mocks.deleteAssignmentService).toHaveBeenCalledWith("as1");
+    expect(mocks.deleteAssignmentService).toHaveBeenCalledWith("as1", testUser);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       message: "Atama silindi.",
@@ -109,5 +108,40 @@ describe("assignment.controller", () => {
 
     expect(next).toHaveBeenCalledWith(error);
     expect(res.json).not.toHaveBeenCalled();
+  });
+  it("passes create errors to next", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const error = new Error("create failed");
+
+    mocks.createAssignmentService.mockRejectedValue(error);
+
+    await controller.createAssignment({ body: {}, user: testUser }, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
+
+  it("passes update errors to next", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const error = new Error("update failed");
+
+    mocks.updateAssignmentService.mockRejectedValue(error);
+
+    await controller.updateAssignment({ params: { id: "as1" }, body: {}, user: testUser }, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
+
+  it("passes delete errors to next", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const error = new Error("delete failed");
+
+    mocks.deleteAssignmentService.mockRejectedValue(error);
+
+    await controller.deleteAssignment({ params: { id: "as1" }, user: testUser }, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
   });
 });

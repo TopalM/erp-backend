@@ -63,7 +63,13 @@ describe("employee.controller", () => {
       type: "WHITE_COLLAR",
       departmentId: "dep1",
     });
-    expect(res.json).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışanlar başarıyla getirildi.",
+      data: [{ id: "emp1" }],
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("gets employee by id", async () => {
@@ -75,7 +81,13 @@ describe("employee.controller", () => {
     await controller.getEmployeeById({ params: { id: "emp1" } }, res, next);
 
     expect(mocks.getEmployeeByIdService).toHaveBeenCalledWith("emp1");
-    expect(res.json).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan detayı başarıyla getirildi.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("creates employee", async () => {
@@ -88,6 +100,12 @@ describe("employee.controller", () => {
 
     expect(mocks.createEmployeeService).toHaveBeenCalledWith({ firstName: "Test" });
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan başarıyla oluşturuldu.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("updates employee", async () => {
@@ -99,6 +117,13 @@ describe("employee.controller", () => {
     await controller.updateEmployee({ params: { id: "emp1" }, body: { firstName: "Updated" } }, res, next);
 
     expect(mocks.updateEmployeeService).toHaveBeenCalledWith("emp1", { firstName: "Updated" });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan başarıyla güncellendi.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("updates employee status", async () => {
@@ -110,6 +135,13 @@ describe("employee.controller", () => {
     await controller.updateEmployeeStatus({ params: { id: "emp1" }, body: { status: "PASSIVE" } }, res, next);
 
     expect(mocks.updateEmployeeStatusService).toHaveBeenCalledWith("emp1", { status: "PASSIVE" });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan durumu başarıyla güncellendi.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("links employee user", async () => {
@@ -121,6 +153,13 @@ describe("employee.controller", () => {
     await controller.linkEmployeeUser({ params: { id: "emp1" }, body: { userId: "user1" } }, res, next);
 
     expect(mocks.linkEmployeeUserService).toHaveBeenCalledWith("emp1", "user1");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan kullanıcı hesabına başarıyla bağlandı.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("unlinks employee user", async () => {
@@ -132,6 +171,13 @@ describe("employee.controller", () => {
     await controller.unlinkEmployeeUser({ params: { id: "emp1" } }, res, next);
 
     expect(mocks.unlinkEmployeeUserService).toHaveBeenCalledWith("emp1");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan kullanıcı bağlantısı kaldırıldı.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("deletes employee", async () => {
@@ -143,6 +189,13 @@ describe("employee.controller", () => {
     await controller.deleteEmployee({ params: { id: "emp1" } }, res, next);
 
     expect(mocks.deleteEmployeeService).toHaveBeenCalledWith("emp1");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Çalışan başarıyla silindi.",
+      data: { id: "emp1" },
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("passes service errors to next", async () => {
@@ -155,5 +208,6 @@ describe("employee.controller", () => {
     await controller.getEmployees({ query: {} }, res, next);
 
     expect(next).toHaveBeenCalledWith(error);
+    expect(res.json).not.toHaveBeenCalled();
   });
 });

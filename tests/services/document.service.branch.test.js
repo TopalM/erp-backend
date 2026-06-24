@@ -29,6 +29,69 @@ const file = {
   size: 1234,
 };
 
+const adminUser = {
+  id: "user1",
+  role: {
+    name: "ADMIN",
+  },
+  userPermissions: [],
+};
+
+const noPermissionUser = {
+  id: "user2",
+  role: {
+    name: "VIEWER",
+  },
+  userPermissions: [],
+};
+
+const purchaseReadUser = {
+  id: "user3",
+  role: {
+    name: "VIEWER",
+  },
+  userPermissions: [
+    {
+      permission: {
+        code: "purchase.read",
+      },
+    },
+  ],
+};
+
+const purchaseCreateUser = {
+  id: "user4",
+  role: {
+    name: "VIEWER",
+  },
+  userPermissions: [
+    {
+      permission: {
+        code: "purchase.create",
+      },
+    },
+  ],
+};
+
+const multiModuleReadUser = {
+  id: "user5",
+  role: {
+    name: "VIEWER",
+  },
+  userPermissions: [
+    {
+      permission: {
+        code: "purchase.read",
+      },
+    },
+    {
+      permission: {
+        code: "quality.read",
+      },
+    },
+  ],
+};
+
 beforeEach(async () => {
   vi.resetModules();
   vi.clearAllMocks();
@@ -63,6 +126,7 @@ beforeEach(async () => {
   prismaMock.document.findFirst.mockResolvedValue({
     id: "doc1",
     isActive: true,
+    module: "PURCHASING",
     originalFileName: "Test Document.pdf",
     filePath: "disk:/documents/test-document.pdf",
     mimeType: "application/pdf",
@@ -87,7 +151,7 @@ describe("document.service branch coverage", () => {
         mimetype: "",
         size: 0,
       },
-      userId: null,
+      user: adminUser,
     });
 
     expect(storageMocks.ensureStorageFolder).toHaveBeenCalledTimes(3);
@@ -108,12 +172,49 @@ describe("document.service branch coverage", () => {
         description: null,
         mimeType: null,
         sizeBytes: null,
-        uploadedById: null,
+        uploadedById: "user1",
       }),
     });
 
     expect(cleanupMocks.cleanupLocalFile).toHaveBeenCalledWith(file.path);
     expect(result.id).toBe("doc1");
+  });
+
+  it("uploads document when user has module create permission", async () => {
+    const result = await service.uploadDocumentService({
+      payload: {
+        module: "PURCHASING",
+        entityType: "PURCHASE_ORDER",
+        entityId: "PO002",
+        documentType: "OTHER",
+      },
+      file,
+      user: purchaseCreateUser,
+    });
+
+    expect(result.id).toBe("doc1");
+    expect(prismaMock.document.create).toHaveBeenCalled();
+  });
+
+  it("rejects document upload when user lacks module create permission", async () => {
+    await expect(
+      service.uploadDocumentService({
+        payload: {
+          module: "PURCHASING",
+          entityType: "PURCHASE_ORDER",
+          entityId: "PO003",
+          documentType: "OTHER",
+        },
+        file,
+        user: noPermissionUser,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Bu modüle doküman yükleme yetkiniz yok.",
+    });
+
+    expect(storageMocks.uploadFile).not.toHaveBeenCalled();
+    expect(cleanupMocks.cleanupLocalFile).not.toHaveBeenCalled();
   });
 
   it("throws when file is missing", async () => {
@@ -125,7 +226,7 @@ describe("document.service branch coverage", () => {
           entityId: "PO001",
         },
         file: null,
-        userId: "user1",
+        user: adminUser,
       }),
     ).rejects.toMatchObject({
       statusCode: 400,
@@ -143,7 +244,7 @@ describe("document.service branch coverage", () => {
           entityId: "PO001",
         },
         file,
-        userId: "user1",
+        user: adminUser,
       }),
     ).rejects.toThrow("upload failed");
 
@@ -152,12 +253,15 @@ describe("document.service branch coverage", () => {
   });
 
   it("lists documents with all filters", async () => {
-    await service.listDocumentsService({
-      module: "PURCHASING",
-      entityType: "PURCHASE_ORDER",
-      entityId: "PO001",
-      documentType: "INVOICE",
-    });
+    await service.listDocumentsService(
+      {
+        module: "PURCHASING",
+        entityType: "PURCHASE_ORDER",
+        entityId: "PO001",
+        documentType: "INVOICE",
+      },
+      adminUser,
+    );
 
     expect(prismaMock.document.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -172,11 +276,42 @@ describe("document.service branch coverage", () => {
     );
   });
 
+  it("scopes document list to modules the user can read", async () => {
+    await service.listDocumentsService({}, multiModuleReadUser);
+
+    expect(prismaMock.document.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          isActive: true,
+          module: {
+            in: ["PURCHASING", "QUALITY"],
+          },
+        },
+      }),
+    );
+  });
+
+  it("returns no-access where clause when user has no module read permission", async () => {
+    await service.listDocumentsService({}, noPermissionUser);
+
+    expect(prismaMock.document.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          isActive: true,
+          id: "__NO_DOCUMENT_ACCESS__",
+        },
+      }),
+    );
+  });
+
   it("throws for invalid list enum filters", async () => {
     await expect(
-      service.listDocumentsService({
-        module: "INVALID",
-      }),
+      service.listDocumentsService(
+        {
+          module: "INVALID",
+        },
+        adminUser,
+      ),
     ).rejects.toMatchObject({
       statusCode: 400,
     });
@@ -185,13 +320,42 @@ describe("document.service branch coverage", () => {
   it("throws when document not found", async () => {
     prismaMock.document.findFirst.mockResolvedValueOnce(null);
 
-    await expect(service.getDocumentByIdService("missing")).rejects.toMatchObject({
+    await expect(service.getDocumentByIdService("missing", adminUser)).rejects.toMatchObject({
       statusCode: 404,
     });
   });
 
+  it("allows document detail when user has module read permission", async () => {
+    const result = await service.getDocumentByIdService("doc1", purchaseReadUser);
+
+    expect(result.id).toBe("doc1");
+  });
+
+  it("rejects document detail when user lacks module read permission", async () => {
+    await expect(service.getDocumentByIdService("doc1", noPermissionUser)).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Bu dokümana erişim yetkiniz yok.",
+    });
+  });
+
+  it("throws when document module has no access rule", async () => {
+    prismaMock.document.findFirst.mockResolvedValueOnce({
+      id: "doc-unknown-module",
+      isActive: true,
+      module: "UNKNOWN_MODULE",
+      originalFileName: "Unknown.pdf",
+      filePath: "disk:/documents/unknown.pdf",
+      mimeType: "application/pdf",
+    });
+
+    await expect(service.getDocumentByIdService("doc-unknown-module", noPermissionUser)).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Bu doküman modülü için erişim kuralı tanımlı değil.",
+    });
+  });
+
   it("gets document download url", async () => {
-    const result = await service.getDocumentDownloadUrlService("doc1");
+    const result = await service.getDocumentDownloadUrlService("doc1", adminUser);
 
     expect(storageMocks.getDownloadUrl).toHaveBeenCalledWith("disk:/documents/test-document.pdf");
     expect(result).toEqual({
@@ -203,7 +367,7 @@ describe("document.service branch coverage", () => {
   });
 
   it("deactivates document", async () => {
-    await service.deactivateDocumentService("doc1");
+    await service.deactivateDocumentService("doc1", adminUser);
 
     expect(prismaMock.document.update).toHaveBeenCalledWith({
       where: {
