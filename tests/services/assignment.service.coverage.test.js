@@ -80,6 +80,10 @@ describe("assignment.service coverage", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].entityId).toBe(entityId);
+    expect(result[0].userId).toBe(user.id);
+    expect(result[0].role).toBe(ROLE);
+    expect(result[0].user).toBeTruthy();
+    expect(result[0].createdBy).toBeTruthy();
   });
 
   it("creates assignment with upsert", async () => {
@@ -99,15 +103,35 @@ describe("assignment.service coverage", () => {
       creator.id,
     );
 
-    expect(result).toBeTruthy();
     expect(result.module).toBe(MODULE);
     expect(result.entityType).toBe(ENTITY_TYPE);
     expect(result.entityId).toBe(entityId);
     expect(result.userId).toBe(user.id);
     expect(result.role).toBe(ROLE);
+    expect(result.note).toBe("Assigned");
+    expect(result.createdById).toBe(creator.id);
   });
 
-  it("updates assignment", async () => {
+  it("creates assignment with default role and nullable note/creator", async () => {
+    const user = await createUser();
+    const entityId = uniqueEntityId();
+
+    const result = await service.createAssignmentService(
+      {
+        module: MODULE,
+        entityType: ENTITY_TYPE,
+        entityId,
+        userId: user.id,
+      },
+      null,
+    );
+
+    expect(result.role).toBe("RESPONSIBLE");
+    expect(result.note).toBeNull();
+    expect(result.createdById).toBeNull();
+  });
+
+  it("updates assignment note and role", async () => {
     const user = await createUser();
     const creator = await createUser();
 
@@ -124,10 +148,45 @@ describe("assignment.service coverage", () => {
     );
 
     const result = await service.updateAssignmentService(assignment.id, {
+      role: "FOLLOWER",
       note: "Updated note",
     });
 
+    expect(result.role).toBe("FOLLOWER");
     expect(result.note).toBe("Updated note");
+  });
+
+  it("updates assignment with empty payload", async () => {
+    const user = await createUser();
+    const creator = await createUser();
+
+    const assignment = await service.createAssignmentService(
+      {
+        module: MODULE,
+        entityType: ENTITY_TYPE,
+        entityId: uniqueEntityId(),
+        userId: user.id,
+        role: ROLE,
+        note: "Assigned",
+      },
+      creator.id,
+    );
+
+    const result = await service.updateAssignmentService(assignment.id, {});
+
+    expect(result.id).toBe(assignment.id);
+    expect(result.role).toBe(ROLE);
+    expect(result.note).toBe("Assigned");
+  });
+
+  it("throws when updating missing assignment", async () => {
+    await expect(
+      service.updateAssignmentService("missing-assignment-id", {
+        note: "Updated",
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it("deletes assignment", async () => {
@@ -153,5 +212,11 @@ describe("assignment.service coverage", () => {
     });
 
     expect(deleted).toBeNull();
+  });
+
+  it("throws when deleting missing assignment", async () => {
+    await expect(service.deleteAssignmentService("missing-assignment-id")).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 });

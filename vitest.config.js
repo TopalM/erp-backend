@@ -15,5 +15,24 @@ export default defineConfig({
     pool: "forks",
     maxWorkers: 1,
     isolate: false,
+
+    coverage: {
+      provider: "v8",
+
+      reporter: ["text", "html"],
+
+      exclude: [
+        "node_modules/**",
+
+        // test dosyaları
+        "tests/**",
+
+        // seed dosyaları
+        "src/seed/**",
+
+        // entrypoint dosyaları (isteğe bağlı)
+        "src/server.js",
+      ],
+    },
   },
 });
