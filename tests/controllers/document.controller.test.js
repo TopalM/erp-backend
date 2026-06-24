@@ -1,0 +1,114 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const mocks = {
+  listDocumentsService: vi.fn(),
+  getDocumentByIdService: vi.fn(),
+  uploadDocumentService: vi.fn(),
+  getDocumentDownloadUrlService: vi.fn(),
+  deactivateDocumentService: vi.fn(),
+};
+
+let controller;
+
+const createRes = () => {
+  const res = {};
+  res.status = vi.fn(() => res);
+  res.json = vi.fn(() => res);
+  return res;
+};
+
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
+
+beforeEach(async () => {
+  vi.resetModules();
+  vi.resetAllMocks();
+
+  vi.doMock("../../src/modules/platform/document/document.service.js", () => mocks);
+
+  controller = await import("../../src/modules/platform/document/document.controller.js");
+});
+
+afterEach(() => {
+  vi.doUnmock("../../src/modules/platform/document/document.service.js");
+  vi.resetModules();
+});
+
+describe("document.controller", () => {
+  it("lists documents", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.listDocumentsService.mockResolvedValue([{ id: "doc1" }]);
+
+    await controller.listDocuments({ query: { module: "SYSTEM" } }, res, next);
+
+    expect(mocks.listDocumentsService).toHaveBeenCalledWith({ module: "SYSTEM" });
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it("gets document by id", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.getDocumentByIdService.mockResolvedValue({ id: "doc1" });
+
+    await controller.getDocumentById({ params: { id: "doc1" } }, res, next);
+
+    expect(mocks.getDocumentByIdService).toHaveBeenCalledWith("doc1");
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it("uploads document", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const file = { path: "/tmp/test.pdf", originalname: "test.pdf" };
+
+    mocks.uploadDocumentService.mockResolvedValue({ id: "doc1" });
+
+    await controller.uploadDocument({ body: { module: "SYSTEM" }, file, user: { id: "user1" } }, res, next);
+
+    expect(mocks.uploadDocumentService).toHaveBeenCalledWith({
+      payload: { module: "SYSTEM" },
+      file,
+      userId: "user1",
+    });
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("gets download url", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.getDocumentDownloadUrlService.mockResolvedValue({ downloadUrl: "url" });
+
+    await controller.getDocumentDownloadUrl({ params: { id: "doc1" } }, res, next);
+
+    expect(mocks.getDocumentDownloadUrlService).toHaveBeenCalledWith("doc1");
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it("deletes document", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.deactivateDocumentService.mockResolvedValue({ id: "doc1" });
+
+    await controller.deleteDocument({ params: { id: "doc1" } }, res, next);
+
+    expect(mocks.deactivateDocumentService).toHaveBeenCalledWith("doc1");
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it("passes errors to next", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const error = new Error("document failed");
+
+    mocks.listDocumentsService.mockRejectedValueOnce(error);
+
+    controller.listDocuments({ query: {} }, res, next);
+    await flushPromises();
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
+});

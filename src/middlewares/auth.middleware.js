@@ -20,6 +20,10 @@ export const authMiddleware = async (req, res, next) => {
 
     const decoded = jwt.verify(token, env.jwt.secret);
 
+    if (!decoded?.userId) {
+      throw new AppError("Geçersiz veya süresi dolmuş token.", 401);
+    }
+
     const user = await prisma.user.findUnique({
       where: {
         id: decoded.userId,

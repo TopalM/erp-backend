@@ -179,31 +179,27 @@ export const updateUserRole = async (userId, roleId, actorUser = null, req = nul
   return sanitizeUser(user);
 };
 
-export const updateUserDepartment = async (userId, departmentId, actorUser = null, req = null) => {
+export const updateUserDepartment = async (userId, departmentId, actor = null, req = null) => {
   const existingUser = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+    where: { id: userId },
   });
 
   if (!existingUser) {
     throw new AppError("Kullanıcı bulunamadı.", 404);
   }
 
-  const department = await prisma.department.findUnique({
-    where: {
-      id: departmentId,
-    },
-  });
+  if (departmentId !== null) {
+    const department = await prisma.department.findUnique({
+      where: { id: departmentId },
+    });
 
-  if (!department) {
-    throw new AppError("Departman bulunamadı.", 404);
+    if (!department) {
+      throw new AppError("Departman bulunamadı.", 404);
+    }
   }
 
-  const user = await prisma.user.update({
-    where: {
-      id: userId,
-    },
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
     data: {
       departmentId,
       tokenVersion: {
@@ -214,23 +210,18 @@ export const updateUserDepartment = async (userId, departmentId, actorUser = nul
   });
 
   await createAuditLog({
-    actorUser,
-    targetUser: user,
+    actor,
+    action: "UPDATE",
+    module: "AUTH",
     entityType: "USER",
-    entityId: user.id,
-    action: "USER_DEPARTMENT_UPDATED",
-    message: `${user.email} kullanıcısının departmanı güncellendi.`,
-    oldValue: {
-      departmentId: existingUser.departmentId,
-    },
-    newValue: {
-      departmentId: user.departmentId,
-      departmentName: user.department?.name,
-    },
+    entityId: userId,
+    message: "Kullanıcı departmanı güncellendi.",
+    oldValue: { departmentId: existingUser.departmentId },
+    newValue: { departmentId },
     req,
   });
 
-  return sanitizeUser(user);
+  return sanitizeUser(updatedUser);
 };
 
 export const deactivateUser = async (userId, actorUser = null, req = null) => {

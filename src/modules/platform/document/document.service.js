@@ -6,6 +6,63 @@ import { AppError } from "../../../utils/appError.js";
 import { buildStoragePath, ensureStorageFolder, uploadFile, getDownloadUrl } from "../storage/index.js";
 import { cleanupLocalFile } from "../storage/storage.cleanup.js";
 
+const DOCUMENT_MODULES = [
+  "PURCHASING",
+  "SUPPLIER",
+  "QUALITY",
+  "PRODUCTION",
+  "SHIPMENT",
+  "MAINTENANCE",
+  "EMPLOYEE",
+  "ACCOUNTING",
+  "UTILITY",
+  "SYSTEM",
+];
+
+const DOCUMENT_ENTITY_TYPES = [
+  "VENDOR_INVOICE",
+  "PURCHASE_REQUEST",
+  "PURCHASE_ORDER",
+  "SUPPLIER",
+  "SUPPLIER_DOCUMENT",
+  "QUALITY_INSPECTION",
+  "QUALITY_CERTIFICATE",
+  "QUALITY_DEVIATION",
+  "PRODUCTION_ORDER",
+  "PRODUCTION_BATCH",
+  "SHIPMENT_PLAN",
+  "DISPATCH_NOTE",
+  "MAINTENANCE",
+  "EQUIPMENT",
+  "EMPLOYEE",
+  "UTILITY_READING",
+  "OTHER",
+];
+
+const DOCUMENT_TYPES = [
+  "INVOICE",
+  "ISO_9001",
+  "ISO_14001",
+  "ISO_45001",
+  "ISO_50001",
+  "COA",
+  "SDS",
+  "TDS",
+  "ANALYSIS_REPORT",
+  "DELIVERY_NOTE",
+  "PACKING_LIST",
+  "MAINTENANCE_FORM",
+  "EMPLOYEE_DOCUMENT",
+  "UTILITY_REPORT",
+  "OTHER",
+];
+
+const assertEnumValue = (value, allowedValues, fieldName) => {
+  if (value && !allowedValues.includes(value)) {
+    throw new AppError(`${fieldName} geçersiz.`, 400);
+  }
+};
+
 function normalizeStoragePart(value) {
   return String(value || "")
     .trim()
@@ -58,20 +115,15 @@ export async function uploadDocumentService({ payload, file, userId }) {
         module: payload.module,
         entityType: payload.entityType,
         entityId: payload.entityId,
-
         documentType: payload.documentType || "OTHER",
-
         title: payload.title || file.originalname,
         description: payload.description || null,
-
         originalFileName: file.originalname,
         storedFileName,
         filePath: uploadResult.storagePath,
-
         mimeType: file.mimetype || null,
         fileExtension: fileExtension || null,
         sizeBytes: file.size || null,
-
         storageProvider: uploadResult.provider || null,
         uploadedById: userId || null,
       },
@@ -82,6 +134,10 @@ export async function uploadDocumentService({ payload, file, userId }) {
 }
 
 export async function listDocumentsService(query = {}) {
+  assertEnumValue(query.module, DOCUMENT_MODULES, "module");
+  assertEnumValue(query.entityType, DOCUMENT_ENTITY_TYPES, "entityType");
+  assertEnumValue(query.documentType, DOCUMENT_TYPES, "documentType");
+
   const where = {
     isActive: true,
   };
@@ -136,7 +192,6 @@ export async function getDocumentByIdService(id) {
 
 export async function getDocumentDownloadUrlService(id) {
   const document = await getDocumentByIdService(id);
-
   const url = await getDownloadUrl(document.filePath);
 
   return {

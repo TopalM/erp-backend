@@ -513,14 +513,18 @@ export const forgetPassword = async (email, req = null) => {
     },
   });
 
-  await sendResetPasswordMail(user, passwordResetToken);
+  try {
+    await sendResetPasswordMail(user, passwordResetToken);
+  } catch (error) {
+    console.error("Password reset mail could not be sent:", error.message);
+  }
 
   await createAuthEventLog({
     userId: user.id,
     email: user.email,
     event: AUTH_EVENTS.PASSWORD_RESET_REQUESTED,
     success: true,
-    message: "Şifre sıfırlama maili gönderildi.",
+    message: "Şifre sıfırlama talebi oluşturuldu.",
     req,
   });
 

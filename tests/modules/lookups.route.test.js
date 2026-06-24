@@ -9,7 +9,8 @@ describe("Lookup routes", () => {
     const res = await authRequest(user).get("/api/lookups");
 
     expect(res.status).toBe(200);
-    expect(res.body.data.groups).toBeTruthy();
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
   });
 
   it("lists blood types", async () => {
@@ -18,7 +19,10 @@ describe("Lookup routes", () => {
     const res = await authRequest(user).get("/api/lookups/blood-types");
 
     expect(res.status).toBe(200);
-    expect(res.body.data.rows).toBeTruthy();
+
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.rows)).toBe(true);
+    expect(res.body.data.pagination).toBeDefined();
   });
 
   it("allows SUPER_ADMIN to access lookup group items", async () => {
@@ -27,5 +31,8 @@ describe("Lookup routes", () => {
     const res = await authRequest(user).get("/api/lookups/groups/bloodTypes/items");
 
     expect(res.status).toBe(200);
+
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.rows)).toBe(true);
   });
 });
