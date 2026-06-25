@@ -25,6 +25,20 @@ const parsePositiveInt = (value, defaultValue) => {
   return parsed;
 };
 
+const parseOptionalPositiveInt = (value, fieldName) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed.toString() !== String(value).trim()) {
+    throw createError(`${fieldName} geçersiz.`, 400);
+  }
+
+  return parsed;
+};
+
 const lookupGroups = {
   departments: {
     name: "Departmanlar",
@@ -411,12 +425,20 @@ const getItemsByGroup = async (groupKey, query = {}) => {
     where[config.activeField] = true;
   }
 
-  if (query.countryId && (config.extraFields || []).includes("countryId")) {
-    where.countryId = Number(query.countryId);
+  if ((config.extraFields || []).includes("countryId")) {
+    const countryId = parseOptionalPositiveInt(query.countryId, "countryId");
+
+    if (countryId !== undefined) {
+      where.countryId = countryId;
+    }
   }
 
-  if (query.cityId && (config.extraFields || []).includes("cityId")) {
-    where.cityId = Number(query.cityId);
+  if ((config.extraFields || []).includes("cityId")) {
+    const cityId = parseOptionalPositiveInt(query.cityId, "cityId");
+
+    if (cityId !== undefined) {
+      where.cityId = cityId;
+    }
   }
 
   if (query.scope && (config.extraFields || []).includes("scope")) {

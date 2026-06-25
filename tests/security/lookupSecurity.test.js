@@ -88,4 +88,32 @@ describe("lookup security", () => {
     expect([200, 400]).toContain(res.status);
     expect(res.status).not.toBe(500);
   });
+
+  it("handles invalid countryId filter safely", async () => {
+    const user = await createTestUser();
+
+    const res = await api()
+      .get("/api/lookups/cities")
+      .query({
+        countryId: "abc",
+      })
+      .set("Authorization", authHeader(user));
+
+    expect([200, 400]).toContain(res.status);
+    expect(res.status).not.toBe(500);
+  });
+
+  it("handles invalid cityId filter safely", async () => {
+    const user = await createTestUser();
+
+    const res = await api()
+      .get("/api/lookups/districts")
+      .query({
+        cityId: "abc",
+      })
+      .set("Authorization", authHeader(user));
+
+    expect([200, 400]).toContain(res.status);
+    expect(res.status).not.toBe(500);
+  });
 });
