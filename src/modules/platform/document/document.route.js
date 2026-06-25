@@ -6,6 +6,7 @@ import { authMiddleware } from "../../../middlewares/auth.middleware.js";
 import { authorizePermissions } from "../../../middlewares/authorizePermissions.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
 import { uploadTempFiles } from "../../../middlewares/uploadTempFiles.middleware.js";
+import { validateUploadedFileContent } from "../../../middlewares/validateUploadedFileContent.middleware.js";
 
 import { PERMISSIONS } from "../../../constants/permissions.js";
 
@@ -25,6 +26,7 @@ router.post(
   "/",
   authorizePermissions(PERMISSIONS.DOCUMENT_CREATE),
   uploadTempFiles.single("file"),
+  validateUploadedFileContent,
   validate(createDocumentSchema),
   controller.uploadDocument,
 );

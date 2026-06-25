@@ -22,6 +22,11 @@ const specialPermissionNames = {
   [PERMISSIONS.APPROVAL_DECIDE]: "Onay Kararı Verme",
   [PERMISSIONS.APPROVAL_CANCEL]: "Onay Süreci İptal Etme",
 
+  [PERMISSIONS.ASSIGNMENT_READ]: "Atama Okuma",
+  [PERMISSIONS.ASSIGNMENT_CREATE]: "Atama Oluşturma",
+  [PERMISSIONS.ASSIGNMENT_UPDATE]: "Atama Güncelleme",
+  [PERMISSIONS.ASSIGNMENT_DELETE]: "Atama Silme",
+
   [PERMISSIONS.DOCUMENT_DOWNLOAD]: "Doküman İndirme",
 
   [PERMISSIONS.SYSTEM_HEALTH_READ]: "Sistem Sağlığı Görüntüleme",

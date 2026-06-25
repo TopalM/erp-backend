@@ -210,4 +210,18 @@ describe("employee.controller", () => {
     expect(next).toHaveBeenCalledWith(error);
     expect(res.json).not.toHaveBeenCalled();
   });
+
+  it("passes service errors to next", async () => {
+    const res = createRes();
+    const next = vi.fn();
+    const error = new Error("Service failed");
+
+    mocks.listEmployeesService.mockRejectedValue(error);
+
+    await controller.getEmployees({ query: {} }, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
 });

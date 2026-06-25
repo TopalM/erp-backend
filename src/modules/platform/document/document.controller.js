@@ -2,6 +2,20 @@ import * as service from "./document.service.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import { successResponse } from "../../../utils/apiResponse.js";
 
+const sanitizeDocument = (document) => {
+  if (!document) return document;
+
+  const { filePath, storageProvider, ...safeDocument } = document;
+
+  return safeDocument;
+};
+
+const sanitizeDocumentList = (documents) => {
+  if (!Array.isArray(documents)) return documents;
+
+  return documents.map(sanitizeDocument);
+};
+
 export const uploadDocument = asyncHandler(async (req, res) => {
   const data = await service.uploadDocumentService({
     payload: req.body,
@@ -9,19 +23,19 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     user: req.user,
   });
 
-  return successResponse(res, data, "Doküman yüklendi.", 201);
+  return successResponse(res, sanitizeDocument(data), "Doküman yüklendi.", 201);
 });
 
 export const listDocuments = asyncHandler(async (req, res) => {
   const data = await service.listDocumentsService(req.query, req.user);
 
-  return successResponse(res, data, "Dokümanlar getirildi.");
+  return successResponse(res, sanitizeDocumentList(data), "Dokümanlar getirildi.");
 });
 
 export const getDocumentById = asyncHandler(async (req, res) => {
   const data = await service.getDocumentByIdService(req.params.id, req.user);
 
-  return successResponse(res, data, "Doküman getirildi.");
+  return successResponse(res, sanitizeDocument(data), "Doküman getirildi.");
 });
 
 export const getDocumentDownloadUrl = asyncHandler(async (req, res) => {
@@ -33,5 +47,5 @@ export const getDocumentDownloadUrl = asyncHandler(async (req, res) => {
 export const deleteDocument = asyncHandler(async (req, res) => {
   const data = await service.deactivateDocumentService(req.params.id, req.user);
 
-  return successResponse(res, data, "Doküman pasife alındı.");
+  return successResponse(res, sanitizeDocument(data), "Doküman pasife alındı.");
 });

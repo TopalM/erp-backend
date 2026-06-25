@@ -14,10 +14,12 @@ const storageMocks = vi.hoisted(() => ({
   ensureStorageFolder: vi.fn(),
   uploadFile: vi.fn(),
   getDownloadUrl: vi.fn(),
+  deleteFile: vi.fn(),
 }));
 
 const cleanupMocks = vi.hoisted(() => ({
   cleanupLocalFile: vi.fn(),
+  cleanupStorageResources: vi.fn(),
 }));
 
 let service;
@@ -113,7 +115,10 @@ beforeEach(async () => {
     provider: "YANDEX",
   });
   storageMocks.getDownloadUrl.mockResolvedValue("https://download.test/document.pdf");
+  storageMocks.deleteFile.mockResolvedValue(undefined);
+
   cleanupMocks.cleanupLocalFile.mockResolvedValue(undefined);
+  cleanupMocks.cleanupStorageResources.mockResolvedValue(undefined);
 
   prismaMock.document.create.mockImplementation(async ({ data }) => ({
     id: "doc1",
@@ -377,5 +382,114 @@ describe("document.service branch coverage", () => {
         isActive: false,
       },
     });
+  });
+
+  it("cleans storage file and local file when database create fails after storage upload", async () => {
+    prismaMock.document.create.mockRejectedValueOnce(new Error("db create failed"));
+
+    await expect(
+      service.uploadDocumentService({
+        payload: {
+          module: "PURCHASING",
+          entityType: "PURCHASE_ORDER",
+          entityId: "PO001",
+          documentType: "OTHER",
+        },
+        file,
+        user: adminUser,
+      }),
+    ).rejects.toThrow("db create failed");
+
+    expect(storageMocks.uploadFile).toHaveBeenCalled();
+
+    expect(cleanupMocks.cleanupStorageResources).toHaveBeenCalledWith(["disk:/documents/test-document.pdf"], expect.any(Function));
+
+    expect(cleanupMocks.cleanupLocalFile).toHaveBeenCalledWith(file.path);
+  });
+
+  it("does not expose public/publish url, only provider download url", async () => {
+    const result = await service.getDocumentDownloadUrlService("doc1", adminUser);
+
+    expect(storageMocks.getDownloadUrl).toHaveBeenCalledWith("disk:/documents/test-document.pdf");
+    expect(result.url).toBe("https://download.test/document.pdf");
+    expect(result).not.toHaveProperty("publicUrl");
+    expect(result).not.toHaveProperty("publishedUrl");
+  });
+
+  it("creates unpredictable stored file name with timestamp and random suffix", async () => {
+    await service.uploadDocumentService({
+      payload: {
+        module: "PURCHASING",
+        entityType: "PURCHASE_ORDER",
+        entityId: "PO001",
+        documentType: "OTHER",
+      },
+      file,
+      user: adminUser,
+    });
+
+    expect(prismaMock.document.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        storedFileName: expect.stringMatching(/^\d+-\d+-Test[ -]Document\.pdf$/),
+      }),
+    });
+  });
+
+  it("does not try storage cleanup when upload fails before storage path exists", async () => {
+    storageMocks.uploadFile.mockRejectedValueOnce(new Error("upload failed"));
+
+    await expect(
+      service.uploadDocumentService({
+        payload: {
+          module: "PURCHASING",
+          entityType: "PURCHASE_ORDER",
+          entityId: "PO001",
+          documentType: "OTHER",
+        },
+        file,
+        user: adminUser,
+      }),
+    ).rejects.toThrow("upload failed");
+
+    expect(cleanupMocks.cleanupStorageResources).not.toHaveBeenCalled();
+    expect(cleanupMocks.cleanupLocalFile).toHaveBeenCalledWith(file.path);
+  });
+
+  it("throws when document create module has no access rule", async () => {
+    await expect(
+      service.uploadDocumentService({
+        payload: {
+          module: "UNKNOWN_MODULE",
+          entityType: "OTHER",
+          entityId: "unknown-1",
+          documentType: "OTHER",
+        },
+        file,
+        user: noPermissionUser,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+    });
+
+    expect(storageMocks.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it("throws when document create access rule is missing", async () => {
+    await expect(
+      service.uploadDocumentService({
+        payload: {
+          module: "UTILITY",
+          entityType: "UTILITY_READING",
+          entityId: "utility-1",
+          documentType: "UTILITY_REPORT",
+        },
+        file,
+        user: noPermissionUser,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+    });
+
+    expect(storageMocks.uploadFile).not.toHaveBeenCalled();
   });
 });

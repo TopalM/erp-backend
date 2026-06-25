@@ -40,7 +40,7 @@ describe("uploadTempFiles.middleware coverage", () => {
     expect(res.status).toBe(200);
     expect(res.body.filename).not.toContain("@");
     expect(res.body.filename).not.toContain("#");
-    expect(res.body.filename).toContain("test file.pdf");
+    expect(res.body.filename).toContain("te-st file.pdf");
   });
 
   it("accepts multiple files", async () => {
@@ -56,6 +56,6 @@ describe("uploadTempFiles.middleware coverage", () => {
     const res = await request(app).post("/upload").attach("file", Buffer.from("test"), "test.exe");
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Desteklenmeyen dosya formatı.");
+    expect(res.body.message).toBe("Desteklenmeyen dosya uzantısı.");
   });
 });

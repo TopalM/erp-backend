@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-
+import { minimalPdfContent } from "../setup/fileFixtures.js";
 import { api, authHeader } from "../setup/auth.js";
 import { createTestUser } from "../setup/factories.js";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
@@ -17,13 +17,16 @@ const uploadDocument = async (user, entityId = `doc-acl-${Date.now()}`) => {
     .field("entityType", "OTHER")
     .field("entityId", entityId)
     .field("documentType", "OTHER")
-    .attach("file", pdfPath);
+    .attach("file", pdfPath, {
+      filename: "safe-file.pdf",
+      contentType: "application/pdf",
+    });
 };
 
 describe("document access control security", () => {
   beforeEach(() => {
     fs.mkdirSync(fixtureDir, { recursive: true });
-    fs.writeFileSync(pdfPath, "fake pdf");
+    fs.writeFileSync(pdfPath, minimalPdfContent);
   });
 
   afterEach(() => {

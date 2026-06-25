@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { minimalPdfContent } from "../setup/fileFixtures.js";
 
 import { api, authHeader } from "../setup/auth.js";
 import { createTestUser } from "../setup/factories.js";
@@ -13,7 +14,7 @@ const safePath = path.join(fixtureDir, "safe.pdf");
 describe("upload path traversal security", () => {
   beforeEach(() => {
     fs.mkdirSync(fixtureDir, { recursive: true });
-    fs.writeFileSync(safePath, "fake pdf");
+    fs.writeFileSync(safePath, minimalPdfContent);
   });
 
   afterEach(() => {
@@ -40,7 +41,8 @@ describe("upload path traversal security", () => {
     expect(res.status).toBe(201);
     expect(res.body.data.originalFileName).not.toContain("../");
     expect(res.body.data.storedFileName).not.toContain("../");
-    expect(res.body.data.filePath).not.toContain("..");
+    expect(res.body.data.filePath).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain("..");
   });
 
   it("does not create file outside upload/storage path", async () => {
@@ -75,7 +77,10 @@ describe("upload path traversal security", () => {
       .field("entityType", "OTHER")
       .field("entityId", `Path Traversal Entity ${Date.now()}`)
       .field("documentType", "OTHER")
-      .attach("file", safePath, "safe.pdf");
+      .attach("file", safePath, {
+        filename: "safe.pdf",
+        contentType: "application/pdf",
+      });
 
     expect(res.status).toBe(201);
 

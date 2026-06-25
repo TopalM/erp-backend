@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-
+import { minimalPdfContent } from "../setup/fileFixtures.js";
 import { api, authHeader } from "../setup/auth.js";
 import { createTestUser } from "../setup/factories.js";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
@@ -14,7 +14,7 @@ const jsPath = path.join(fixtureDir, "script.js");
 describe("file upload security", () => {
   beforeEach(() => {
     fs.mkdirSync(fixtureDir, { recursive: true });
-    fs.writeFileSync(pdfPath, "fake pdf");
+    fs.writeFileSync(pdfPath, minimalPdfContent);
     fs.writeFileSync(exePath, "fake exe");
     fs.writeFileSync(jsPath, "console.log('bad')");
   });
@@ -23,15 +23,22 @@ describe("file upload security", () => {
     fs.rmSync(fixtureDir, { recursive: true, force: true });
   });
 
-  const upload = (user, filePath) =>
-    api()
+  const upload = (user, filePath) => {
+    const filename = path.basename(filePath);
+    const isPdf = filename.toLowerCase().endsWith(".pdf");
+
+    return api()
       .post("/api/documents")
       .set("Authorization", authHeader(user))
       .field("module", "SYSTEM")
       .field("entityType", "OTHER")
       .field("entityId", `security-upload-${Date.now()}`)
       .field("documentType", "OTHER")
-      .attach("file", filePath);
+      .attach("file", filePath, {
+        filename,
+        contentType: isPdf ? "application/pdf" : "application/octet-stream",
+      });
+  };
 
   it("allows approved file extension with permission", async () => {
     const user = await createTestUser({

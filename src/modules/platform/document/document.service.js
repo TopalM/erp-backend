@@ -4,7 +4,7 @@ import { prisma } from "../../../database/prisma.client.js";
 import { AppError } from "../../../utils/appError.js";
 
 import { buildStoragePath, ensureStorageFolder, uploadFile, getDownloadUrl } from "../storage/index.js";
-import { cleanupLocalFile } from "../storage/storage.cleanup.js";
+import { cleanupLocalFile, cleanupStorageResources } from "../storage/storage.cleanup.js";
 
 const DOCUMENT_MODULES = [
   "PURCHASING",
@@ -99,16 +99,25 @@ function normalizeStoragePart(value) {
     .replace(/^-|-$/g, "");
 }
 
-function createStoredFileName(file) {
-  const extension = path.extname(file.originalname || "").toLowerCase();
+function sanitizeFileName(filename = "document") {
+  const extension = path.extname(filename || "").toLowerCase();
 
   const baseName = path
-    .basename(file.originalname || "document", extension)
-    .replace(/[^\wğüşöçıİĞÜŞÖÇ.-]+/gi, "-")
+    .basename(filename || "document", extension)
+    .replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ._ -]/g, "-")
+    .replace(/\.+/g, ".")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/\s+/g, " ")
+    .replace(/^[-. ]+|[-. ]+$/g, "")
+    .slice(0, 60);
 
-  return `${Date.now()}-${Math.round(Math.random() * 1e9)}-${baseName || "document"}${extension}`;
+  return `${baseName || "document"}${extension}`;
+}
+
+function createStoredFileName(file) {
+  const safeFileName = sanitizeFileName(file.originalname || "document");
+
+  return `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeFileName}`;
 }
 
 function isAdminLike(user) {
@@ -192,8 +201,11 @@ export async function uploadDocumentService({ payload, file, user }) {
   const entityFolder = normalizeStoragePart(payload.entityType);
   const entityIdFolder = normalizeStoragePart(payload.entityId);
 
+  const safeOriginalFileName = sanitizeFileName(file.originalname || "document");
   const storedFileName = createStoredFileName(file);
-  const fileExtension = path.extname(file.originalname || "").toLowerCase();
+  const fileExtension = path.extname(safeOriginalFileName).toLowerCase();
+
+  let uploadedStoragePath = null;
 
   try {
     await ensureStorageFolder(moduleFolder);
@@ -208,15 +220,17 @@ export async function uploadDocumentService({ payload, file, user }) {
       overwrite: true,
     });
 
-    return prisma.document.create({
+    uploadedStoragePath = uploadResult.storagePath;
+
+    return await prisma.document.create({
       data: {
         module: payload.module,
         entityType: payload.entityType,
         entityId: payload.entityId,
         documentType: payload.documentType || "OTHER",
-        title: payload.title || file.originalname,
+        title: payload.title || safeOriginalFileName,
         description: payload.description || null,
-        originalFileName: file.originalname,
+        originalFileName: safeOriginalFileName,
         storedFileName,
         filePath: uploadResult.storagePath,
         mimeType: file.mimetype || null,
@@ -226,6 +240,15 @@ export async function uploadDocumentService({ payload, file, user }) {
         uploadedById: user?.id || null,
       },
     });
+  } catch (error) {
+    if (uploadedStoragePath) {
+      await cleanupStorageResources([uploadedStoragePath], async (resourcePath) => {
+        const { deleteFile } = await import("../storage/index.js");
+        return deleteFile(resourcePath);
+      });
+    }
+
+    throw error;
   } finally {
     await cleanupLocalFile(file.path);
   }
@@ -291,6 +314,19 @@ export async function getDocumentByIdService(id, user) {
   return document;
 }
 
+function sanitizeDownloadUrl(url) {
+  if (!url || typeof url !== "string") {
+    return url;
+  }
+
+  if (url.startsWith("/uploads/")) {
+    const fileName = path.basename(url);
+    return `/uploads/${fileName}`;
+  }
+
+  return url;
+}
+
 export async function getDocumentDownloadUrlService(id, user) {
   const document = await getDocumentByIdService(id, user);
   const url = await getDownloadUrl(document.filePath);
@@ -299,7 +335,7 @@ export async function getDocumentDownloadUrlService(id, user) {
     id: document.id,
     fileName: document.originalFileName,
     mimeType: document.mimeType,
-    url,
+    url: sanitizeDownloadUrl(url),
   };
 }
 
