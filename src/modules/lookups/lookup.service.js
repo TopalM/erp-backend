@@ -15,6 +15,16 @@ const getNextNumberId = async (model) => {
   return Number(last?.id || 0) + 1;
 };
 
+const parsePositiveInt = (value, defaultValue) => {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return defaultValue;
+  }
+
+  return parsed;
+};
+
 const lookupGroups = {
   departments: {
     name: "Departmanlar",
@@ -387,10 +397,12 @@ const findRecordOrFail = async (config, id) => {
 const getItemsByGroup = async (groupKey, query = {}) => {
   const config = getConfig(groupKey);
 
-  const page = Math.max(Number(query.page || 1), 1);
   const defaultLimit = config.large ? 50 : 100;
   const maxLimit = config.large ? 200 : 500;
-  const limit = Math.min(Math.max(Number(query.limit || defaultLimit), 1), maxLimit);
+
+  const page = parsePositiveInt(query.page, 1);
+  const requestedLimit = parsePositiveInt(query.limit, defaultLimit);
+  const limit = Math.min(requestedLimit, maxLimit);
   const skip = (page - 1) * limit;
 
   const where = {};
