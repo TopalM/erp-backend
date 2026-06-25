@@ -1,25 +1,35 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import fs from "fs/promises";
 import path from "path";
 
-import { uploadFile, moveResource, copyResource } from "../../src/modules/platform/storage/providers/localStorage.service.js";
+import { uploadFile, moveResource, copyResource, deleteFile } from "../../src/modules/platform/storage/providers/localStorage.service.js";
 
 describe("localStorage.service branch coverage", () => {
+  const cleanupTargets = ["branch-test/upload", "branch-test/move", "branch-test/copy"];
+
+  afterEach(async () => {
+    await Promise.all(cleanupTargets.map((target) => deleteFile(target)));
+  });
+
   it("throws when upload target exists and overwrite disabled", async () => {
     const tempDir = path.join(process.cwd(), `tmp-upload-${Date.now()}`);
 
     await fs.mkdir(tempDir, { recursive: true });
 
     const sourceFile = path.join(tempDir, "source.txt");
-    const targetFile = path.join(tempDir, "target.txt");
+    const targetPath = "branch-test/upload/target.txt";
 
     await fs.writeFile(sourceFile, "source");
-    await fs.writeFile(targetFile, "target");
+
+    await uploadFile({
+      localFilePath: sourceFile,
+      storagePath: targetPath,
+    });
 
     await expect(
       uploadFile({
         localFilePath: sourceFile,
-        storagePath: targetFile,
+        storagePath: targetPath,
         overwrite: false,
       }),
     ).rejects.toMatchObject({
@@ -37,11 +47,21 @@ describe("localStorage.service branch coverage", () => {
 
     await fs.mkdir(tempDir, { recursive: true });
 
-    const fromPath = path.join(tempDir, "from.txt");
-    const toPath = path.join(tempDir, "to.txt");
+    const sourceFile = path.join(tempDir, "source.txt");
+    const fromPath = "branch-test/move/from.txt";
+    const toPath = "branch-test/move/to.txt";
 
-    await fs.writeFile(fromPath, "from");
-    await fs.writeFile(toPath, "to");
+    await fs.writeFile(sourceFile, "source");
+
+    await uploadFile({
+      localFilePath: sourceFile,
+      storagePath: fromPath,
+    });
+
+    await uploadFile({
+      localFilePath: sourceFile,
+      storagePath: toPath,
+    });
 
     await expect(
       moveResource({
@@ -64,11 +84,21 @@ describe("localStorage.service branch coverage", () => {
 
     await fs.mkdir(tempDir, { recursive: true });
 
-    const fromPath = path.join(tempDir, "from.txt");
-    const toPath = path.join(tempDir, "to.txt");
+    const sourceFile = path.join(tempDir, "source.txt");
+    const fromPath = "branch-test/copy/from.txt";
+    const toPath = "branch-test/copy/to.txt";
 
-    await fs.writeFile(fromPath, "from");
-    await fs.writeFile(toPath, "to");
+    await fs.writeFile(sourceFile, "source");
+
+    await uploadFile({
+      localFilePath: sourceFile,
+      storagePath: fromPath,
+    });
+
+    await uploadFile({
+      localFilePath: sourceFile,
+      storagePath: toPath,
+    });
 
     await expect(
       copyResource({
@@ -90,7 +120,7 @@ describe("localStorage.service branch coverage", () => {
     await expect(
       uploadFile({
         localFilePath: "/tmp/not-found.txt",
-        storagePath: "/tmp/target.txt",
+        storagePath: "branch-test/missing/target.txt",
       }),
     ).rejects.toMatchObject({
       statusCode: 400,

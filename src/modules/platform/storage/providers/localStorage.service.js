@@ -5,13 +5,65 @@ import path from "path";
 import { storageConfig } from "../storage.config.js";
 import { StorageError } from "../storage.errors.js";
 
-const localRoot = path.join(process.cwd(), "uploads", "storage");
+const localRoot = storageConfig.localRoot;
+const storageRoot = path.resolve(localRoot);
 
-// Path parçalarını temizler.
+const assertInsideStorageRoot = (targetPath) => {
+  const resolvedPath = path.resolve(targetPath);
+
+  if (resolvedPath !== storageRoot && !resolvedPath.startsWith(`${storageRoot}${path.sep}`)) {
+    throw new StorageError("Storage root dışına erişim engellendi.", 400);
+  }
+
+  return resolvedPath;
+};
+
+const resolveStoragePath = (storagePath) => {
+  const value = String(storagePath || "").trim();
+
+  if (!value) {
+    throw new StorageError("Storage path zorunludur.", 400);
+  }
+
+  if (path.isAbsolute(value)) {
+    const resolvedPath = path.resolve(value);
+
+    if (resolvedPath === storageRoot || resolvedPath.startsWith(`${storageRoot}${path.sep}`)) {
+      return resolvedPath;
+    }
+  }
+
+  const cleanPath = normalizePathPart(value);
+
+  return assertInsideStorageRoot(path.join(storageRoot, cleanPath));
+};
+
 const normalizePathPart = (value) => {
-  return String(value || "")
-    .trim()
-    .replace(/^\/+|\/+$/g, "");
+  const part = String(value || "").trim();
+
+  if (!part) return "";
+
+  if (part.includes("\0")) {
+    throw new StorageError("Geçersiz storage path.", 400);
+  }
+
+  if (path.isAbsolute(part)) {
+    const segmentsFromAbsolute = part.split(/[\\/]+/).filter(Boolean);
+
+    if (segmentsFromAbsolute.some((segment) => segment === "." || segment === "..")) {
+      throw new StorageError("Geçersiz storage path segmenti.", 400);
+    }
+
+    return segmentsFromAbsolute.join(path.sep);
+  }
+
+  const segments = part.split(/[\\/]+/).filter(Boolean);
+
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    throw new StorageError("Path traversal tespit edildi.", 400);
+  }
+
+  return segments.join(path.sep);
 };
 
 // Local storage path üretir.
@@ -19,7 +71,7 @@ const normalizePathPart = (value) => {
 export const buildPath = (...parts) => {
   const cleanParts = [storageConfig.appRoot, ...parts].map(normalizePathPart).filter(Boolean);
 
-  return path.join(localRoot, ...cleanParts);
+  return assertInsideStorageRoot(path.join(storageRoot, ...cleanParts));
 };
 
 // Local storage bağlantısını kontrol eder.
@@ -45,11 +97,16 @@ export const ensureFolder = async (...parts) => {
 // Kaynak bilgisi getirir.
 export const getResourceInfo = async (storagePath) => {
   try {
-    const stat = await fsp.stat(storagePath);
+    const safePath = resolveStoragePath(storagePath);
+    const stat = await fsp.lstat(safePath);
+
+    if (stat.isSymbolicLink()) {
+      throw new StorageError("Symlink kaynaklarına erişim engellendi.", 400);
+    }
 
     return {
-      path: storagePath,
-      name: path.basename(storagePath),
+      path: safePath,
+      name: path.basename(safePath),
       isFile: stat.isFile(),
       isDirectory: stat.isDirectory(),
       size: stat.size,
@@ -57,6 +114,10 @@ export const getResourceInfo = async (storagePath) => {
       updatedAt: stat.mtime,
     };
   } catch (error) {
+    if (error instanceof StorageError) {
+      throw error;
+    }
+
     throw new StorageError("Storage kaynağı bulunamadı.", 404);
   }
 };
@@ -64,7 +125,8 @@ export const getResourceInfo = async (storagePath) => {
 // Kaynak var mı kontrol eder.
 export const resourceExists = async (storagePath) => {
   try {
-    await fsp.access(storagePath);
+    const safePath = resolveStoragePath(storagePath);
+    await fsp.access(safePath);
     return true;
   } catch {
     return false;
@@ -77,18 +139,19 @@ export const uploadFile = async ({ localFilePath, storagePath, overwrite = true 
     throw new StorageError("Lokal dosya bulunamadı.", 400);
   }
 
-  const exists = await resourceExists(storagePath);
+  const safeStoragePath = resolveStoragePath(storagePath);
+  const exists = await resourceExists(safeStoragePath);
 
   if (exists && !overwrite) {
     throw new StorageError("Storage kaynağı zaten mevcut.", 409);
   }
 
-  await fsp.mkdir(path.dirname(storagePath), { recursive: true });
-  await fsp.copyFile(localFilePath, storagePath);
+  await fsp.mkdir(path.dirname(safeStoragePath), { recursive: true });
+  await fsp.copyFile(localFilePath, safeStoragePath);
 
   return {
     storagePath,
-    fileName: path.basename(storagePath),
+    fileName: path.basename(safeStoragePath),
     provider: "LOCAL",
   };
 };
@@ -98,13 +161,23 @@ export const deleteFile = async (storagePath) => {
   if (!storagePath) return true;
 
   try {
-    await fsp.rm(storagePath, {
+    const safePath = resolveStoragePath(storagePath);
+
+    if (safePath === storageRoot) {
+      throw new StorageError("Storage root silinemez.", 400);
+    }
+
+    await fsp.rm(safePath, {
       recursive: true,
       force: true,
     });
 
     return true;
-  } catch {
+  } catch (error) {
+    if (error instanceof StorageError) {
+      throw error;
+    }
+
     return true;
   }
 };
@@ -112,21 +185,31 @@ export const deleteFile = async (storagePath) => {
 // Local dosya için indirilebilir URL üretir.
 // Bunun çalışması için app.js içinde uploads klasörü static servis edilmelidir.
 export const getDownloadUrl = async (storagePath) => {
-  const relativePath = path.relative(path.join(process.cwd(), "uploads"), storagePath);
+  const safePath = resolveStoragePath(storagePath);
+
+  const uploadsRoot = path.resolve(process.cwd(), "uploads");
+  const relativePath = path.relative(uploadsRoot, safePath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new StorageError("İndirme path'i geçersiz.", 400);
+  }
 
   return `/uploads/${relativePath.replace(/\\/g, "/")}`;
 };
 
 // Dosya veya klasör taşır.
 export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
-  const exists = await resourceExists(toPath);
+  const safeFromPath = resolveStoragePath(fromPath);
+  const safeToPath = resolveStoragePath(toPath);
+
+  const exists = await resourceExists(safeToPath);
 
   if (exists && !overwrite) {
     throw new StorageError("Hedef storage kaynağı zaten mevcut.", 409);
   }
 
-  await fsp.mkdir(path.dirname(toPath), { recursive: true });
-  await fsp.rename(fromPath, toPath);
+  await fsp.mkdir(path.dirname(safeToPath), { recursive: true });
+  await fsp.rename(safeFromPath, safeToPath);
 
   return {
     fromPath,
@@ -135,15 +218,19 @@ export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
 };
 
 // Dosya veya klasör kopyalar.
+
 export const copyResource = async ({ fromPath, toPath, overwrite = true }) => {
-  const exists = await resourceExists(toPath);
+  const safeFromPath = resolveStoragePath(fromPath);
+  const safeToPath = resolveStoragePath(toPath);
+
+  const exists = await resourceExists(safeToPath);
 
   if (exists && !overwrite) {
     throw new StorageError("Hedef storage kaynağı zaten mevcut.", 409);
   }
 
-  await fsp.mkdir(path.dirname(toPath), { recursive: true });
-  await fsp.cp(fromPath, toPath, {
+  await fsp.mkdir(path.dirname(safeToPath), { recursive: true });
+  await fsp.cp(safeFromPath, safeToPath, {
     recursive: true,
     force: overwrite,
   });

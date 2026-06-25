@@ -2,13 +2,35 @@ import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
 
-const tempUploadDir = "uploads/temp";
+const tempUploadDir = path.resolve(process.cwd(), "uploads", "temp");
 
 if (!fs.existsSync(tempUploadDir)) {
   fs.mkdirSync(tempUploadDir, { recursive: true });
 }
 
 const allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".webp"];
+
+const dangerousExtensions = new Set([
+  ".exe",
+  ".bat",
+  ".cmd",
+  ".sh",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".ps1",
+  ".php",
+  ".py",
+  ".rb",
+  ".jar",
+  ".dll",
+  ".msi",
+  ".com",
+  ".scr",
+  ".jsp",
+  ".aspx",
+]);
 
 const extensionMimeMap = {
   ".pdf": ["application/pdf"],
@@ -22,12 +44,62 @@ const extensionMimeMap = {
   ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip"],
 };
 
-const sanitizeFileName = (filename = "file") => {
-  const ext = path.extname(filename).toLowerCase();
-  const safeExt = allowedExtensions.includes(ext) ? ext : "";
+const createUploadError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
 
-  const baseName = path
-    .basename(filename || "file", ext)
+const getFileNameParts = (filename = "file") => {
+  const rawName = String(filename || "file");
+
+  if (!rawName.trim() || rawName.includes("\0")) {
+    throw createUploadError("Dosya adı güvenli değil.");
+  }
+
+  if (rawName.includes("/") || rawName.includes("\\")) {
+    throw createUploadError("Dosya adı güvenli değil.");
+  }
+
+  const baseOnly = path.basename(rawName);
+
+  if (baseOnly !== rawName) {
+    throw createUploadError("Dosya adı güvenli değil.");
+  }
+
+  const ext = path.extname(baseOnly).toLowerCase();
+
+  if (!ext) {
+    throw createUploadError("Desteklenmeyen dosya uzantısı.");
+  }
+
+  if (!allowedExtensions.includes(ext)) {
+    throw createUploadError("Desteklenmeyen dosya uzantısı.");
+  }
+
+  const lowerName = baseOnly.toLowerCase();
+  const parts = lowerName.split(".").filter(Boolean);
+
+  if (parts.length > 2) {
+    const middleExtensions = parts.slice(1, -1).map((part) => `.${part}`);
+
+    if (middleExtensions.some((middleExt) => dangerousExtensions.has(middleExt))) {
+      throw createUploadError("Dosya adı güvenli değil.");
+    }
+  }
+
+  const baseName = path.basename(baseOnly, ext);
+
+  return {
+    ext,
+    baseName,
+  };
+};
+
+const sanitizeFileName = (filename = "file") => {
+  const { ext, baseName } = getFileNameParts(filename);
+
+  const safeBaseName = baseName
     .replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ._ -]/g, "-")
     .replace(/\.+/g, ".")
     .replace(/-+/g, "-")
@@ -35,7 +107,7 @@ const sanitizeFileName = (filename = "file") => {
     .replace(/^[-. ]+|[-. ]+$/g, "")
     .slice(0, 60);
 
-  return `${baseName || "file"}${safeExt}`;
+  return `${safeBaseName || "file"}${ext}`;
 };
 
 const storage = multer.diskStorage({
@@ -43,29 +115,29 @@ const storage = multer.diskStorage({
     cb(null, tempUploadDir);
   },
   filename: (_req, file, cb) => {
-    const safeOriginalName = sanitizeFileName(file.originalname);
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeOriginalName}`);
+    try {
+      const safeOriginalName = sanitizeFileName(file.originalname);
+      cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeOriginalName}`);
+    } catch (error) {
+      cb(error);
+    }
   },
 });
 
 const fileFilter = (_req, file, cb) => {
-  const ext = path.extname(file.originalname || "").toLowerCase();
+  try {
+    const { ext } = getFileNameParts(file.originalname);
 
-  if (!allowedExtensions.includes(ext)) {
-    const error = new Error("Desteklenmeyen dosya uzantısı.");
-    error.statusCode = 400;
+    const allowedMimes = extensionMimeMap[ext];
+
+    if (allowedMimes?.length && file.mimetype && !allowedMimes.includes(file.mimetype)) {
+      return cb(createUploadError("Dosya MIME tipi uzantı ile uyumlu değil."));
+    }
+
+    return cb(null, true);
+  } catch (error) {
     return cb(error);
   }
-
-  const allowedMimes = extensionMimeMap[ext];
-
-  if (allowedMimes?.length && file.mimetype && !allowedMimes.includes(file.mimetype)) {
-    const error = new Error("Dosya MIME tipi uzantı ile uyumlu değil.");
-    error.statusCode = 400;
-    return cb(error);
-  }
-
-  return cb(null, true);
 };
 
 export const uploadTempFiles = multer({

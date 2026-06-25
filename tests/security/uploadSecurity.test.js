@@ -32,7 +32,9 @@ const basePayload = () => ({
 
 const createTempFile = async (filename, content = minimalPdfContent) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "erp-upload-security-"));
-  const filePath = path.join(dir, filename.replaceAll("/", "_").replaceAll("\\", "_"));
+  const safeDiskFilename = filename.replaceAll("\0", "_").replaceAll("/", "_").replaceAll("\\", "_");
+
+  const filePath = path.join(dir, safeDiskFilename);
   await fs.writeFile(filePath, content);
   return filePath;
 };
@@ -82,6 +84,18 @@ describe("upload security", () => {
         user,
         filename,
         mimeType: "application/octet-stream",
+      });
+
+      expect([400, 415]).toContain(res.status);
+    });
+
+    it("rejects dangerous middle extension even when final extension is allowed", async () => {
+      const user = await createUploader();
+
+      const res = await uploadFile({
+        user,
+        filename: "invoice.exe.pdf",
+        mimeType: "application/pdf",
       });
 
       expect([400, 415]).toContain(res.status);
@@ -146,7 +160,7 @@ describe("upload security", () => {
   describe("path traversal filenames", () => {
     const dangerousFiles = ["../../../etc/passwd.pdf", "../../app.js.pdf", "..\\..\\windows.pdf", "C:\\Windows\\System32\\cmd.pdf"];
 
-    it.each(dangerousFiles)("sanitizes path traversal filename: %s", async (filename) => {
+    it.each(dangerousFiles)("does not persist path traversal filename segments: %s", async (filename) => {
       const user = await createUploader();
 
       const res = await uploadFile({
@@ -155,14 +169,26 @@ describe("upload security", () => {
         mimeType: "application/pdf",
       });
 
-      expect(res.status).toBe(201);
+      expect([201, 400]).toContain(res.status);
 
       const body = JSON.stringify(res.body);
+
       expect(body).not.toContain("../");
       expect(body).not.toContain("..\\");
       expect(body).not.toContain("C:\\");
-      expect(res.body.data.originalFileName).not.toContain("/");
-      expect(res.body.data.originalFileName).not.toContain("\\");
+      expect(body).not.toContain("/etc/passwd");
+      expect(body).not.toContain("Windows\\System32");
+
+      if (res.status === 201) {
+        expect(res.body.data.originalFileName).not.toContain("/");
+        expect(res.body.data.originalFileName).not.toContain("\\");
+        expect(res.body.data.storedFileName).not.toContain("/");
+        expect(res.body.data.storedFileName).not.toContain("\\");
+      }
+
+      if (res.status === 400) {
+        expect(res.body.message).toBe("Dosya adı güvenli değil.");
+      }
     });
   });
 
@@ -260,6 +286,19 @@ describe("upload security", () => {
       expect(res.status).toBe(400);
       expect(res.body.message).toBe("Dosya içeriği uzantı ile uyumlu değil.");
     });
+
+    it("rejects valid extension with invalid declared mime type", async () => {
+      const user = await createUploader();
+
+      const res = await uploadFile({
+        user,
+        filename: "safe.pdf",
+        mimeType: "image/png",
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Dosya MIME tipi uzantı ile uyumlu değil.");
+    });
   });
 
   describe("invalid multipart", () => {
@@ -335,6 +374,20 @@ describe("upload security", () => {
       const body = JSON.stringify(res.body);
       expect(body).not.toContain("uploads/temp");
       expect(body).not.toContain("/tmp/");
+    });
+  });
+
+  describe("null byte filenames", () => {
+    it("rejects null byte filename", async () => {
+      const user = await createUploader();
+
+      const res = await uploadFile({
+        user,
+        filename: "safe.pdf%00.exe",
+        mimeType: "application/pdf",
+      });
+
+      expect([400, 415]).toContain(res.status);
     });
   });
 });

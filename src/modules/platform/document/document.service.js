@@ -83,6 +83,30 @@ const MODULE_CREATE_PERMISSION_MAP = {
   SYSTEM: "system_log.read",
 };
 
+const MODULE_DELETE_PERMISSION_MAP = {
+  PURCHASING: "purchase.delete",
+  SUPPLIER: "supplier.delete",
+  QUALITY: "quality.delete",
+  PRODUCTION: "production.delete",
+  SHIPMENT: "shipping.delete",
+  MAINTENANCE: "maintenance.delete",
+  EMPLOYEE: "employee.delete",
+  ACCOUNTING: "accounting.delete",
+  UTILITY: "system_health.read",
+  SYSTEM: "system_log.delete",
+};
+
+const documentInclude = {
+  uploadedBy: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  },
+};
+
 const assertEnumValue = (value, allowedValues, fieldName) => {
   if (value && !allowedValues.includes(value)) {
     throw new AppError(`${fieldName} geçersiz.`, 400);
@@ -128,14 +152,10 @@ function getUserPermissionCodes(user) {
   return user?.userPermissions?.map((item) => item?.permission?.code).filter(Boolean) || [];
 }
 
-function getModuleReadPermissionCode(module) {
-  return MODULE_READ_PERMISSION_MAP[module];
-}
-
 function assertDocumentAccess(user, document) {
   if (isAdminLike(user)) return;
 
-  const requiredPermission = getModuleReadPermissionCode(document.module);
+  const requiredPermission = MODULE_READ_PERMISSION_MAP[document.module];
 
   if (!requiredPermission) {
     throw new AppError("Bu doküman modülü için erişim kuralı tanımlı değil.", 403);
@@ -164,6 +184,22 @@ function assertDocumentCreateAccess(user, module) {
   }
 }
 
+function assertDocumentDeleteAccess(user, document) {
+  if (isAdminLike(user)) return;
+
+  const requiredPermission = MODULE_DELETE_PERMISSION_MAP[document.module];
+
+  if (!requiredPermission) {
+    throw new AppError("Bu doküman modülü için silme kuralı tanımlı değil.", 403);
+  }
+
+  const userPermissionCodes = getUserPermissionCodes(user);
+
+  if (!userPermissionCodes.includes(requiredPermission)) {
+    throw new AppError("Bu dokümanı silme yetkiniz yok.", 403);
+  }
+}
+
 function buildDocumentScopeWhere(user) {
   if (isAdminLike(user)) return {};
 
@@ -184,6 +220,36 @@ function buildDocumentScopeWhere(user) {
       in: allowedModules,
     },
   };
+}
+
+function sanitizeDocument(document) {
+  if (!document) return document;
+
+  const { filePath, storageProvider, ...safeDocument } = document;
+
+  return safeDocument;
+}
+
+function sanitizeDocuments(documents) {
+  return documents.map(sanitizeDocument);
+}
+
+async function getRawDocumentByIdForAccess(id, user) {
+  const document = await prisma.document.findFirst({
+    where: {
+      id,
+      isActive: true,
+    },
+    include: documentInclude,
+  });
+
+  if (!document) {
+    throw new AppError("Doküman bulunamadı.", 404);
+  }
+
+  assertDocumentAccess(user, document);
+
+  return document;
 }
 
 export async function uploadDocumentService({ payload, file, user }) {
@@ -222,7 +288,7 @@ export async function uploadDocumentService({ payload, file, user }) {
 
     uploadedStoragePath = uploadResult.storagePath;
 
-    return await prisma.document.create({
+    const createdDocument = await prisma.document.create({
       data: {
         module: payload.module,
         entityType: payload.entityType,
@@ -240,6 +306,8 @@ export async function uploadDocumentService({ payload, file, user }) {
         uploadedById: user?.id || null,
       },
     });
+
+    return sanitizeDocument(createdDocument);
   } catch (error) {
     if (uploadedStoragePath) {
       await cleanupStorageResources([uploadedStoragePath], async (resourcePath) => {
@@ -269,49 +337,21 @@ export async function listDocumentsService(query = {}, user) {
   if (query.entityId) where.entityId = query.entityId;
   if (query.documentType) where.documentType = query.documentType;
 
-  return prisma.document.findMany({
+  const documents = await prisma.document.findMany({
     where,
-    include: {
-      uploadedBy: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-    },
+    include: documentInclude,
     orderBy: {
       createdAt: "desc",
     },
   });
+
+  return sanitizeDocuments(documents);
 }
 
 export async function getDocumentByIdService(id, user) {
-  const document = await prisma.document.findFirst({
-    where: {
-      id,
-      isActive: true,
-    },
-    include: {
-      uploadedBy: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-    },
-  });
+  const document = await getRawDocumentByIdForAccess(id, user);
 
-  if (!document) {
-    throw new AppError("Doküman bulunamadı.", 404);
-  }
-
-  assertDocumentAccess(user, document);
-
-  return document;
+  return sanitizeDocument(document);
 }
 
 function sanitizeDownloadUrl(url) {
@@ -328,7 +368,7 @@ function sanitizeDownloadUrl(url) {
 }
 
 export async function getDocumentDownloadUrlService(id, user) {
-  const document = await getDocumentByIdService(id, user);
+  const document = await getRawDocumentByIdForAccess(id, user);
   const url = await getDownloadUrl(document.filePath);
 
   return {
@@ -340,9 +380,11 @@ export async function getDocumentDownloadUrlService(id, user) {
 }
 
 export async function deactivateDocumentService(id, user) {
-  const existing = await getDocumentByIdService(id, user);
+  const existing = await getRawDocumentByIdForAccess(id, user);
 
-  return prisma.document.update({
+  assertDocumentDeleteAccess(user, existing);
+
+  const updatedDocument = await prisma.document.update({
     where: {
       id: existing.id,
     },
@@ -350,4 +392,6 @@ export async function deactivateDocumentService(id, user) {
       isActive: false,
     },
   });
+
+  return sanitizeDocument(updatedDocument);
 }

@@ -300,8 +300,29 @@ const getConfig = (groupKey) => {
 };
 
 const parseId = (config, id) => {
-  if (config.idType === "number") return Number(id);
-  return id;
+  if (config.idType !== "number") {
+    return id;
+  }
+
+  const parsed = Number.parseInt(id, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed.toString() !== String(id).trim()) {
+    throw createError("Lookup id geçersiz.", 400);
+  }
+
+  return parsed;
+};
+
+const buildNoMatchWhere = (config) => {
+  if (config.idType === "number") {
+    return {
+      id: -1,
+    };
+  }
+
+  return {
+    id: "__NO_LOOKUP_MATCH__",
+  };
 };
 
 const getPayloadValue = (payload, field) => {
@@ -312,24 +333,31 @@ const getPayloadValue = (payload, field) => {
   return payload?.[field];
 };
 
-const castBoolean = (value) => {
+const castBoolean = (value, fieldName = "boolean") => {
   if (value === true || value === "true") return true;
   if (value === false || value === "false") return false;
-  return Boolean(value);
+
+  throw createError(`${fieldName} geçersiz.`, 400);
 };
 
 const castValue = (config, field, value) => {
   if (value === undefined || value === null || value === "") return undefined;
 
   if ((config.numericFields || []).includes(field)) {
-    return Number(value);
+    const parsed = Number(value);
+
+    if (!Number.isFinite(parsed)) {
+      throw createError(`${field} sayısal olmalıdır.`, 400);
+    }
+
+    return parsed;
   }
 
   if ((config.booleanFields || []).includes(field) || field === "isActive") {
-    return castBoolean(value);
+    return castBoolean(value, field);
   }
 
-  return value;
+  return String(value).trim();
 };
 
 const normalizeRow = (groupKey, config, row) => {
@@ -389,10 +417,22 @@ const buildData = (config, payload, isCreate = false) => {
   }
 
   if (config.activeField) {
-    data[config.activeField] = payload.isActive ?? true;
+    data[config.activeField] = payload.isActive === undefined ? true : castValue(config, "isActive", payload.isActive);
   }
 
   return data;
+};
+
+const normalizePrismaLookupError = (error) => {
+  if (error?.code === "P2002") {
+    throw createError("Lookup kaydı zaten mevcut.", 409);
+  }
+
+  if (error?.code === "P2003") {
+    throw createError("İlişkili kayıt bulunamadı.", 400);
+  }
+
+  throw error;
 };
 
 const findRecordOrFail = async (config, id) => {
@@ -446,10 +486,24 @@ const getItemsByGroup = async (groupKey, query = {}) => {
   }
 
   if (query.search?.trim()) {
-    where[config.labelField] = {
-      contains: query.search.trim(),
-      mode: "insensitive",
-    };
+    const search = query.search.trim();
+    const searchField = config.labelField;
+    const isNumericSearchField = (config.numericFields || []).includes(searchField);
+
+    if (isNumericSearchField) {
+      const numericSearch = Number(search);
+
+      if (Number.isFinite(numericSearch)) {
+        where[searchField] = numericSearch;
+      } else {
+        Object.assign(where, buildNoMatchWhere(config));
+      }
+    } else {
+      where[searchField] = {
+        contains: search,
+        mode: "insensitive",
+      };
+    }
   }
 
   const [total, rows] = await Promise.all([
@@ -504,9 +558,13 @@ export const createLookupGroupItemService = async (groupKey, payload) => {
     data.id = await getNextNumberId(config.model);
   }
 
-  const row = await prisma[config.model].create({ data });
+  try {
+    const row = await prisma[config.model].create({ data });
 
-  return normalizeRow(groupKey, config, row);
+    return normalizeRow(groupKey, config, row);
+  } catch (error) {
+    normalizePrismaLookupError(error);
+  }
 };
 
 export const updateLookupGroupItemService = async (groupKey, id, payload) => {
@@ -520,12 +578,16 @@ export const updateLookupGroupItemService = async (groupKey, id, payload) => {
 
   const data = buildData(config, payload, false);
 
-  const row = await prisma[config.model].update({
-    where: { id: parseId(config, id) },
-    data,
-  });
+  try {
+    const row = await prisma[config.model].update({
+      where: { id: parseId(config, id) },
+      data,
+    });
 
-  return normalizeRow(groupKey, config, row);
+    return normalizeRow(groupKey, config, row);
+  } catch (error) {
+    normalizePrismaLookupError(error);
+  }
 };
 
 export const deleteLookupGroupItemService = async (groupKey, id) => {
@@ -537,13 +599,23 @@ export const deleteLookupGroupItemService = async (groupKey, id) => {
 
   await findRecordOrFail(config, id);
 
-  if (config.activeField) {
-    await prisma[config.model].update({
+  try {
+    if (config.activeField) {
+      await prisma[config.model].update({
+        where: { id: parseId(config, id) },
+        data: { [config.activeField]: false },
+      });
+
+      return null;
+    }
+
+    await prisma[config.model].delete({
       where: { id: parseId(config, id) },
-      data: { [config.activeField]: false },
     });
 
     return null;
+  } catch (error) {
+    normalizePrismaLookupError(error);
   }
 
   await prisma[config.model].delete({

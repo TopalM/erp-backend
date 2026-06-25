@@ -4,7 +4,7 @@ import axios from "axios";
 
 import { storageClient } from "../storage.client.js";
 import { storageConfig } from "../storage.config.js";
-import { normalizeStorageError } from "../storage.errors.js";
+import { normalizeStorageError, StorageError } from "../storage.errors.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,9 +24,28 @@ const isTemporaryYandexError = (error) => {
 };
 
 const normalizePathPart = (value) => {
-  return String(value || "")
-    .trim()
-    .replace(/^\/+|\/+$/g, "");
+  const part = String(value || "").trim();
+
+  if (!part) return "";
+
+  if (part.includes("\0")) {
+    throw new StorageError("Geçersiz storage path.", 400);
+  }
+
+  if (part.includes(":")) {
+    throw new StorageError("Storage path ':' içeremez.", 400);
+  }
+
+  const segments = part
+    .replace(/^\/+|\/+$/g, "")
+    .split(/[\\/]+/)
+    .filter(Boolean);
+
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    throw new StorageError("Geçersiz storage path segmenti.", 400);
+  }
+
+  return segments.join("/");
 };
 
 export const buildPath = (...parts) => {
@@ -166,11 +185,10 @@ export const uploadFile = async ({ localFilePath, storagePath, overwrite = true 
       provider: "YANDEX",
     };
   } catch (error) {
-    console.log("YANDEX_UPLOAD_ERROR", {
+    console.error("YANDEX_UPLOAD_ERROR", {
       status: error.response?.status,
-      data: error.response?.data,
+      providerError: error.response?.data?.error,
       message: error.message,
-      storagePath,
     });
 
     throw normalizeStorageError(error, "Storage dosya yükleme hatası.");
