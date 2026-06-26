@@ -27,13 +27,16 @@ describe("approval.service", () => {
       user.id,
     );
 
-    const result = await approvalService.listApprovalsService({
-      module: "SYSTEM",
-      entityType: "OTHER",
-      entityId,
-      status: "PENDING",
-      requestedById: user.id,
-    });
+    const result = await approvalService.listApprovalsService(
+      {
+        module: "SYSTEM",
+        entityType: "OTHER",
+        entityId,
+        status: "PENDING",
+        requestedById: user.id,
+      },
+      user,
+    );
 
     expect(result.some((item) => item.id === approval.id)).toBe(true);
   });

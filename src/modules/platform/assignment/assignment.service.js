@@ -28,7 +28,7 @@ function assertCanModifyAssignment(assignment, user) {
   }
 }
 
-export async function listAssignmentsService(query = {}) {
+export async function listAssignmentsService(query = {}, user = null) {
   const where = {};
 
   if (query.module) where.module = query.module;
@@ -36,6 +36,14 @@ export async function listAssignmentsService(query = {}) {
   if (query.entityId) where.entityId = query.entityId;
   if (query.userId) where.userId = query.userId;
   if (query.role) where.role = query.role;
+
+  if (!isAdminLike(user)) {
+    if (!user?.id) {
+      where.id = "__NO_ASSIGNMENT_ACCESS__";
+    } else {
+      where.OR = [{ userId: user.id }, { createdById: user.id }];
+    }
+  }
 
   return prisma.assignment.findMany({
     where,

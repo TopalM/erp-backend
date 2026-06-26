@@ -45,7 +45,7 @@ describe("approval.controller", () => {
 
     await controller.listApprovals({ query: { status: "PENDING" } }, res, next);
 
-    expect(mocks.listApprovalsService).toHaveBeenCalledWith({ status: "PENDING" });
+    expect(mocks.listApprovalsService).toHaveBeenCalledWith({ status: "PENDING" }, undefined);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       data: [{ id: "a1" }],

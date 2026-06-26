@@ -2,7 +2,7 @@ import * as service from "./assignment.service.js";
 
 export async function listAssignments(req, res, next) {
   try {
-    const data = await service.listAssignmentsService(req.query);
+    const data = await service.listAssignmentsService(req.query, req.user);
     res.json({ success: true, data });
   } catch (error) {
     next(error);

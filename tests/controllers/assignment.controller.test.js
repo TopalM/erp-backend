@@ -42,9 +42,9 @@ describe("assignment.controller", () => {
 
     mocks.listAssignmentsService.mockResolvedValue([{ id: "as1" }]);
 
-    await controller.listAssignments({ query: { module: "SYSTEM" } }, res, next);
+    await controller.listAssignments({ query: { module: "SYSTEM" }, user: testUser }, res, next);
 
-    expect(mocks.listAssignmentsService).toHaveBeenCalledWith({ module: "SYSTEM" });
+    expect(mocks.listAssignmentsService).toHaveBeenCalledWith({ module: "SYSTEM" }, testUser);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: [{ id: "as1" }] });
   });
 

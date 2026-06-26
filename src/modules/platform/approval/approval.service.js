@@ -56,8 +56,22 @@ function assertCanCancelApproval(approval, user) {
   }
 }
 
-export async function listApprovalsService(query = {}) {
-  const where = {};
+function buildApprovalScopeWhere(user) {
+  if (isAdminLike(user)) return {};
+
+  if (!user?.id) {
+    return { id: "__NO_APPROVAL_ACCESS__" };
+  }
+
+  return {
+    OR: [{ requestedById: user.id }, { approverId: user.id }],
+  };
+}
+
+export async function listApprovalsService(query = {}, user = null) {
+  const where = {
+    ...buildApprovalScopeWhere(user),
+  };
 
   if (query.module) where.module = query.module;
   if (query.entityType) where.entityType = query.entityType;

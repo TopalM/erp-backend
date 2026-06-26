@@ -2,7 +2,7 @@ import * as service from "./approval.service.js";
 
 export async function listApprovals(req, res, next) {
   try {
-    const data = await service.listApprovalsService(req.query);
+    const data = await service.listApprovalsService(req.query, req.user);
     res.json({ success: true, data });
   } catch (error) {
     next(error);

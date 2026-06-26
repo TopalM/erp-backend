@@ -81,14 +81,17 @@ describe("approval.service coverage", () => {
   it("lists approvals with all filters", async () => {
     const { approval, requester, approver } = await createApproval();
 
-    const result = await service.listApprovalsService({
-      module: approval.module,
-      entityType: approval.entityType,
-      entityId: approval.entityId,
-      status: "PENDING",
-      approverId: approver.id,
-      requestedById: requester.id,
-    });
+    const result = await service.listApprovalsService(
+      {
+        module: approval.module,
+        entityType: approval.entityType,
+        entityId: approval.entityId,
+        status: "PENDING",
+        approverId: approver.id,
+        requestedById: requester.id,
+      },
+      asAdminUser(requester),
+    );
 
     expect(result.some((item) => item.id === approval.id)).toBe(true);
   });

@@ -67,6 +67,7 @@ describe("localStorage path traversal security", () => {
     const symlinkAbsolutePath = path.join(path.resolve(storageConfig.localRoot), symlinkStoragePath.replace(/^\/+|\/+$/g, ""));
 
     await fs.mkdir(path.dirname(symlinkAbsolutePath), { recursive: true });
+    await fs.rm(symlinkAbsolutePath, { force: true });
     await fs.symlink(realFile, symlinkAbsolutePath);
 
     await expect(getResourceInfo(symlinkStoragePath)).rejects.toMatchObject({

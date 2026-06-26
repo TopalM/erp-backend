@@ -18,26 +18,6 @@ const assertInsideStorageRoot = (targetPath) => {
   return resolvedPath;
 };
 
-const resolveStoragePath = (storagePath) => {
-  const value = String(storagePath || "").trim();
-
-  if (!value) {
-    throw new StorageError("Storage path zorunludur.", 400);
-  }
-
-  if (path.isAbsolute(value)) {
-    const resolvedPath = path.resolve(value);
-
-    if (resolvedPath === storageRoot || resolvedPath.startsWith(`${storageRoot}${path.sep}`)) {
-      return resolvedPath;
-    }
-  }
-
-  const cleanPath = normalizePathPart(value);
-
-  return assertInsideStorageRoot(path.join(storageRoot, cleanPath));
-};
-
 const normalizePathPart = (value) => {
   const part = String(value || "").trim();
 
@@ -66,16 +46,34 @@ const normalizePathPart = (value) => {
   return segments.join(path.sep);
 };
 
-// Local storage path üretir.
-// Örnek: uploads/storage/PlastifayERP/suppliers/documents/file.pdf
+const resolveStoragePath = (storagePath) => {
+  const value = String(storagePath || "").trim();
+
+  if (!value) {
+    throw new StorageError("Storage path zorunludur.", 400);
+  }
+
+  if (path.isAbsolute(value)) {
+    const resolvedPath = path.resolve(value);
+
+    if (resolvedPath === storageRoot || resolvedPath.startsWith(`${storageRoot}${path.sep}`)) {
+      return resolvedPath;
+    }
+
+    throw new StorageError("Storage root dışına erişim engellendi.", 400);
+  }
+
+  const cleanPath = normalizePathPart(value);
+
+  return assertInsideStorageRoot(path.join(storageRoot, cleanPath));
+};
+
 export const buildPath = (...parts) => {
   const cleanParts = [storageConfig.appRoot, ...parts].map(normalizePathPart).filter(Boolean);
 
   return assertInsideStorageRoot(path.join(storageRoot, ...cleanParts));
 };
 
-// Local storage bağlantısını kontrol eder.
-// Local provider için klasöre erişilebilir mi kontrolü yeterlidir.
 export const checkConnection = async () => {
   await fsp.mkdir(localRoot, { recursive: true });
 
@@ -85,7 +83,6 @@ export const checkConnection = async () => {
   };
 };
 
-// Klasör oluşturur.
 export const ensureFolder = async (...parts) => {
   const folderPath = buildPath(...parts);
 
@@ -94,7 +91,6 @@ export const ensureFolder = async (...parts) => {
   return folderPath;
 };
 
-// Kaynak bilgisi getirir.
 export const getResourceInfo = async (storagePath) => {
   try {
     const safePath = resolveStoragePath(storagePath);
@@ -122,7 +118,6 @@ export const getResourceInfo = async (storagePath) => {
   }
 };
 
-// Kaynak var mı kontrol eder.
 export const resourceExists = async (storagePath) => {
   try {
     const safePath = resolveStoragePath(storagePath);
@@ -133,7 +128,6 @@ export const resourceExists = async (storagePath) => {
   }
 };
 
-// Lokal temp dosyayı local storage hedefine kopyalar.
 export const uploadFile = async ({ localFilePath, storagePath, overwrite = true }) => {
   if (!localFilePath || !fs.existsSync(localFilePath)) {
     throw new StorageError("Lokal dosya bulunamadı.", 400);
@@ -156,14 +150,19 @@ export const uploadFile = async ({ localFilePath, storagePath, overwrite = true 
   };
 };
 
-// Dosya veya klasör siler.
 export const deleteFile = async (storagePath) => {
   if (!storagePath) return true;
+
+  const value = String(storagePath).trim();
+
+  if (value === "/" || value === "\\" || value === storageConfig.appRoot) {
+    throw new StorageError("Storage root silinemez.", 400);
+  }
 
   try {
     const safePath = resolveStoragePath(storagePath);
 
-    if (safePath === storageRoot) {
+    if (safePath === storageRoot || safePath === buildPath()) {
       throw new StorageError("Storage root silinemez.", 400);
     }
 
@@ -175,29 +174,36 @@ export const deleteFile = async (storagePath) => {
     return true;
   } catch (error) {
     if (error instanceof StorageError) {
-      throw error;
+      if (error.message === "Storage root silinemez.") {
+        throw error;
+      }
+
+      return true;
     }
 
     return true;
   }
 };
 
-// Local dosya için indirilebilir URL üretir.
-// Bunun çalışması için app.js içinde uploads klasörü static servis edilmelidir.
 export const getDownloadUrl = async (storagePath) => {
   const safePath = resolveStoragePath(storagePath);
 
   const uploadsRoot = path.resolve(process.cwd(), "uploads");
-  const relativePath = path.relative(uploadsRoot, safePath);
+  const relativeToUploads = path.relative(uploadsRoot, safePath);
 
-  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+  if (!relativeToUploads.startsWith("..") && !path.isAbsolute(relativeToUploads)) {
+    return `/uploads/${relativeToUploads.replace(/\\/g, "/")}`;
+  }
+
+  const relativeToStorageRoot = path.relative(storageRoot, safePath);
+
+  if (relativeToStorageRoot.startsWith("..") || path.isAbsolute(relativeToStorageRoot)) {
     throw new StorageError("İndirme path'i geçersiz.", 400);
   }
 
-  return `/uploads/${relativePath.replace(/\\/g, "/")}`;
+  return `/uploads/storage/${relativeToStorageRoot.replace(/\\/g, "/")}`;
 };
 
-// Dosya veya klasör taşır.
 export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
   const safeFromPath = resolveStoragePath(fromPath);
   const safeToPath = resolveStoragePath(toPath);
@@ -216,8 +222,6 @@ export const moveResource = async ({ fromPath, toPath, overwrite = true }) => {
     toPath,
   };
 };
-
-// Dosya veya klasör kopyalar.
 
 export const copyResource = async ({ fromPath, toPath, overwrite = true }) => {
   const safeFromPath = resolveStoragePath(fromPath);
@@ -241,13 +245,6 @@ export const copyResource = async ({ fromPath, toPath, overwrite = true }) => {
   };
 };
 
-// Local provider için public/private ayrımı yok.
-// Static servis ediliyorsa zaten erişilebilir.
-export const publishResource = async () => {
-  return true;
-};
+export const publishResource = async () => true;
 
-// Local provider için public/private ayrımı yok.
-export const unpublishResource = async () => {
-  return true;
-};
+export const unpublishResource = async () => true;

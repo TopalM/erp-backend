@@ -158,4 +158,65 @@ describe("document.controller", () => {
 
     expect(next).toHaveBeenCalledWith(error);
   });
+  it("returns null safely when uploaded document is null", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.uploadDocumentService.mockResolvedValue(null);
+
+    await controller.uploadDocument(
+      {
+        body: {},
+        file: { path: "/tmp/file.pdf" },
+        user: testUser,
+      },
+      res,
+      next,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Doküman yüklendi.",
+      data: null,
+    });
+  });
+
+  it("returns non-array list response safely", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.listDocumentsService.mockResolvedValue(null);
+
+    await controller.listDocuments({ query: {}, user: testUser }, res, next);
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Dokümanlar getirildi.",
+      data: null,
+    });
+  });
+
+  it("removes sensitive storage fields from document response", async () => {
+    const res = createRes();
+    const next = vi.fn();
+
+    mocks.getDocumentByIdService.mockResolvedValue({
+      id: "doc1",
+      title: "Test",
+      filePath: "/secret/path/file.pdf",
+      storageProvider: "LOCAL",
+    });
+
+    await controller.getDocumentById({ params: { id: "doc1" }, user: testUser }, res, next);
+
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Doküman getirildi.",
+      data: {
+        id: "doc1",
+        title: "Test",
+      },
+    });
+  });
 });

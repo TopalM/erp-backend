@@ -77,13 +77,16 @@ describe("assignment.service coverage", () => {
       creator,
     );
 
-    const result = await service.listAssignmentsService({
-      module: MODULE,
-      entityType: ENTITY_TYPE,
-      entityId,
-      userId: user.id,
-      role: ROLE,
-    });
+    const result = await service.listAssignmentsService(
+      {
+        module: MODULE,
+        entityType: ENTITY_TYPE,
+        entityId,
+        userId: user.id,
+        role: ROLE,
+      },
+      creator,
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].entityId).toBe(entityId);
